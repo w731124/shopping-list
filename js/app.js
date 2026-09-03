@@ -1,6 +1,15 @@
 (function () {
   'use strict';
 
+  // 賣場企業識別色（卡片左側色條），用賣場名稱比對；新賣場若不在表裡則 fallback 中性灰邊框
+  var STORE_ACCENT_COLORS = {
+    'Costco': '#D32F2F',
+    'Nitori': '#2E7D32',
+    'Daiso': '#D6336C',
+    'Decathlon': '#0072CE',
+    'IKEA': '#FFCC00'
+  };
+
   var TAG_COLORS = [
     { key: 'red', label: '紅' }, { key: 'orange', label: '橙' }, { key: 'yellow', label: '黃' },
     { key: 'green', label: '綠' }, { key: 'blue', label: '藍' },
@@ -125,19 +134,14 @@
     var html = '';
     visibleStores.forEach(function (store) {
       var items = state.tripList.filter(function (t) { return String(t.category_id) === String(store.id); });
-      var catalogItems = state.catalog.filter(function (c) { return String(c.category_id) === String(store.id); });
+      var accentColor = STORE_ACCENT_COLORS[store.name] || 'var(--border)';
       html +=
-        '<div class="section store-block" data-category-id="' + store.id + '">' +
+        '<div class="section store-block" data-category-id="' + store.id + '" style="border-left: 5px solid ' + accentColor + ';">' +
           '<div class="section-header">' +
             '<h2 class="section-title">' + escapeHtml(store.name) + '</h2>' +
             '<button class="btn-add" data-action="open-add-trip" data-category-id="' + store.id + '">+ 加入項目</button>' +
           '</div>' +
           renderTripList(items) +
-          '<details class="collapsible">' +
-            '<summary>品項庫管理</summary>' +
-            renderCatalogList(catalogItems) +
-            renderAddCatalogForm(store.id) +
-          '</details>' +
         '</div>';
     });
 
@@ -218,14 +222,6 @@
         '<button class="btn-solid-danger" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
       '</span>' +
     '</li>';
-  }
-
-  function renderAddCatalogForm(categoryId) {
-    return '<form class="inline-form" data-action="add-catalog-form" data-category-id="' + categoryId + '">' +
-      '<input type="text" name="name" placeholder="新增品項庫名稱" required>' +
-      renderTagSelect() +
-      '<button class="btn-add" type="submit">+ 加入項目</button>' +
-    '</form>';
   }
 
   function renderTagSelect(selectedId) {
@@ -502,6 +498,29 @@
 
   // ---------- 加入項目 Modal ----------
   function openAddTripModal(categoryId) {
+    var cat = categoryById(categoryId);
+    var isDaily = !!cat && cat.type === 'daily';
+
+    // 賣場分類沒有品項庫管理介面了，加入項目統一走一次性項目輸入，不提供品項庫選擇
+    if (!isDaily) {
+      var storeModalHtml =
+        '<div class="modal-overlay" id="modal-overlay">' +
+          '<div class="modal-sheet">' +
+            '<div class="modal-header">' +
+              '<h3 class="modal-title">加入項目</h3>' +
+              '<button class="modal-close" data-action="close-modal">×</button>' +
+            '</div>' +
+            '<form class="inline-form" data-action="oneoff-form" data-category-id="' + categoryId + '">' +
+              '<input type="text" name="name" placeholder="項目名稱" required>' +
+              renderTagSelect() +
+              '<button class="btn-add" type="submit">加入</button>' +
+            '</form>' +
+          '</div>' +
+        '</div>';
+      showModal(storeModalHtml);
+      return;
+    }
+
     var catalogItems = state.catalog.filter(function (c) { return String(c.category_id) === String(categoryId); });
     var modalHtml =
       '<div class="modal-overlay" id="modal-overlay">' +
