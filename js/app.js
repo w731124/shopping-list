@@ -3,7 +3,7 @@
 
   var TAG_COLORS = [
     { key: 'red', label: '紅' }, { key: 'orange', label: '橙' }, { key: 'yellow', label: '黃' },
-    { key: 'green', label: '綠' }, { key: 'teal', label: '青' }, { key: 'blue', label: '藍' },
+    { key: 'green', label: '綠' }, { key: 'blue', label: '藍' },
     { key: 'purple', label: '紫' }, { key: 'pink', label: '粉' }
   ];
 
@@ -194,9 +194,9 @@
       '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
       '<span>' +
-        '<button class="btn-add-light" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
-        '<button class="btn-ghost" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button> ' +
-        '<button class="btn-danger-text" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
+        '<button class="btn-solid-primary" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
+        '<button class="btn-solid-neutral" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button> ' +
+        '<button class="btn-solid-danger" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
       '</span>' +
     '</li>';
   }

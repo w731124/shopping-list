@@ -8,8 +8,11 @@
   --primary-tint: #E4F0EC;
   --border: #E4E1DA;
   --danger: #D9534F;
+  --danger-deep: #B33A36;
+  --neutral-deep: #5C5B56;
   --radius: 14px;
   --radius-sm: 8px;
+  --radius-btn: 6px;
 
   --tag-red: #E57373;    --tag-red-tint: #FCEBEB;
   --tag-orange: #FFB74D; --tag-orange-tint: #FFF4E4;
@@ -82,19 +85,25 @@ body {
   background: none; border: 1.5px solid var(--text-muted); color: var(--text);
   border-radius: 999px; padding: 6px 12px; font-size: 0.85rem;
 }
-.btn-add-light {
-  background: var(--primary-tint); border: 1.5px solid var(--primary); color: var(--primary-dark);
-  border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600;
-}
 .btn-danger-text {
   background: var(--tag-red-tint); border: 1.5px solid var(--danger); color: var(--danger);
   border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600;
 }
 
-.catalog-item .btn-add-light, .catalog-item .btn-ghost, .catalog-item .btn-danger-text {
+.catalog-item .btn-ghost {
   min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
   border-radius: var(--radius-sm);
 }
+
+/* 實心按鈕：形狀（小圓角矩形）與飽和度都刻意跟淺色膠囊標籤區隔開，通用於任何清單列 */
+.btn-solid-primary, .btn-solid-neutral, .btn-solid-danger {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: var(--radius-btn); min-height: 32px;
+  padding: 6px 14px; font-size: 0.85rem; font-weight: 600; color: #fff;
+}
+.btn-solid-primary { background: var(--primary); }
+.btn-solid-neutral { background: var(--neutral-deep); }
+.btn-solid-danger  { background: var(--danger-deep); }
 
 .trip-list, .catalog-list, .tag-manage-list, .store-manage-list { list-style: none; margin: 0; padding: 0; }
 
