@@ -151,6 +151,8 @@ function handle_(e) {
 
       case 'getTags': result = ok_(sheetToObjects_(SHEETS.TAGS)); break;
       case 'addTag': result = ok_(addTag_(params)); break;
+      case 'updateTag': result = ok_(updateTag_(params)); break;
+      case 'deleteTag': result = ok_(deleteTag_(params)); break;
 
       default: result = err_('未知的 action: ' + action);
     }
@@ -263,4 +265,34 @@ function addTag_(p) {
     color_key: p.color_key || 'gray'
   };
   return appendRow_(SHEETS.TAGS, obj);
+}
+
+function updateTag_(p) {
+  var updated = updateRowByKey_(SHEETS.TAGS, 'tag_id', p.tag_id, { name: p.name, color_key: p.color_key });
+  if (!updated) throw '找不到標籤: ' + p.tag_id;
+  return { tag_id: p.tag_id, name: p.name, color_key: p.color_key };
+}
+
+function deleteTag_(p) {
+  var removed = deleteRowByKey_(SHEETS.TAGS, 'tag_id', p.tag_id);
+  if (!removed) throw '找不到標籤: ' + p.tag_id;
+  var affectedCatalogCount = clearTagReferences_(SHEETS.CATALOG, p.tag_id);
+  var affectedTripListCount = clearTagReferences_(SHEETS.TRIPLIST, p.tag_id);
+  return { tag_id: p.tag_id, affectedCatalogCount: affectedCatalogCount, affectedTripListCount: affectedTripListCount };
+}
+
+// 掃描指定表，把所有 tag_id 符合的列清空（設為未分類），回傳受影響列數
+function clearTagReferences_(sheetName, tagId) {
+  var sheet = getSheet_(sheetName);
+  var headers = SCHEMA[sheetName];
+  var tagCol = headers.indexOf('tag_id');
+  var values = sheet.getDataRange().getValues();
+  var count = 0;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][tagCol]) === String(tagId)) {
+      sheet.getRange(r + 1, tagCol + 1).setValue('');
+      count++;
+    }
+  }
+  return count;
 }

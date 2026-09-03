@@ -146,6 +146,7 @@ details.collapsible .catalog-list { margin-top: 8px; }
 }
 .catalog-item:last-child, .store-manage-item:last-child, .tag-manage-item:last-child { border-bottom: none; }
 .catalog-item .name-wrap, .store-manage-item .name-wrap { display: flex; align-items: center; gap: 8px; }
+.catalog-item .name-wrap { flex: 1; min-width: 0; }
 
 .inline-form { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 

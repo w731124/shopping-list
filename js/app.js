@@ -12,7 +12,8 @@
     catalog: [],   // 全部品項庫（所有分類混在一起，用 category_id 過濾）
     tripList: [],
     tags: [],
-    activeTab: 'daily'
+    activeTab: 'daily',
+    editingTagId: null
   };
 
   function tmpId() { return 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
@@ -171,11 +172,13 @@
     if (!items.length) return '<p class="empty-hint">品項庫是空的</p>';
     return '<ul class="catalog-list">' + items.map(function (c) {
       var tag = tagById(c.tag_id);
-      return '<li class="catalog-item">' +
+      var tagClass = tag ? 'tag-' + tag.color_key : '';
+      return '<li class="catalog-item ' + tagClass + '">' +
         '<span class="name-wrap">' +
           (tag ? '<span class="tag-dot dot-' + tag.color_key + '"></span>' : '') +
           escapeHtml(c.name) +
         '</span>' +
+        (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
         '<span>' +
           '<button class="btn-ghost" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
           '<button class="btn-danger-text" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
@@ -477,11 +480,7 @@
             '<button class="modal-close" data-action="close-modal">×</button>' +
           '</div>' +
           '<ul class="tag-manage-list">' +
-            (state.tags.length ? state.tags.map(function (t) {
-              return '<li class="tag-manage-item">' +
-                '<span><span class="tag-dot dot-' + t.color_key + '"></span> ' + escapeHtml(t.name) + '</span>' +
-              '</li>';
-            }).join('') : '<p class="empty-hint">尚未建立標籤</p>') +
+            (state.tags.length ? state.tags.map(renderTagManageRow).join('') : '<p class="empty-hint">尚未建立標籤</p>') +
           '</ul>' +
           '<form class="inline-form" data-action="add-tag-form">' +
             '<input type="text" name="name" placeholder="新標籤名稱" required>' +
@@ -492,17 +491,59 @@
           '</form>' +
         '</div>' +
       '</div>';
-    showModal(modalHtml, function (overlay) {
-      overlay.addEventListener('submit', function (e) {
-        var form = e.target.closest('[data-action="add-tag-form"]');
-        if (form) {
-          e.preventDefault();
-          var name = form.elements.name.value.trim();
-          var colorKey = form.elements.color_key.value;
-          if (!name) return;
-          addTag(name, colorKey);
-        }
-      });
+    showModal(modalHtml, bindTagsModalEvents);
+  }
+
+  function renderTagManageRow(t) {
+    if (state.editingTagId === t.tag_id) {
+      return '<li class="tag-manage-item">' +
+        '<form class="inline-form" data-action="edit-tag-form" data-tag-id="' + t.tag_id + '">' +
+          '<input type="text" name="name" value="' + escapeHtml(t.name) + '" required>' +
+          '<select name="color_key">' +
+            TAG_COLORS.map(function (c) { return '<option value="' + c.key + '"' + (c.key === t.color_key ? ' selected' : '') + '>' + c.label + '</option>'; }).join('') +
+          '</select>' +
+          '<button class="btn-add" type="submit">儲存</button>' +
+          '<button class="btn-ghost" type="button" data-action="cancel-edit-tag">取消</button>' +
+        '</form>' +
+      '</li>';
+    }
+    return '<li class="tag-manage-item">' +
+      '<span><span class="tag-dot dot-' + t.color_key + '"></span> ' + escapeHtml(t.name) + '</span>' +
+      '<span>' +
+        '<button class="btn-ghost" data-action="start-edit-tag" data-tag-id="' + t.tag_id + '">編輯</button> ' +
+        '<button class="btn-danger-text" data-action="delete-tag" data-tag-id="' + t.tag_id + '">刪除</button>' +
+      '</span>' +
+    '</li>';
+  }
+
+  function bindTagsModalEvents(overlay) {
+    overlay.addEventListener('click', function (e) {
+      var t;
+      if ((t = e.target.closest('[data-action="start-edit-tag"]'))) {
+        state.editingTagId = t.dataset.tagId;
+        renderTagsModalContent();
+      } else if ((t = e.target.closest('[data-action="cancel-edit-tag"]'))) {
+        state.editingTagId = null;
+        renderTagsModalContent();
+      } else if ((t = e.target.closest('[data-action="delete-tag"]'))) {
+        deleteTag(t.dataset.tagId);
+      }
+    });
+    overlay.addEventListener('submit', function (e) {
+      var form;
+      if ((form = e.target.closest('[data-action="add-tag-form"]'))) {
+        e.preventDefault();
+        var name = form.elements.name.value.trim();
+        var colorKey = form.elements.color_key.value;
+        if (!name) return;
+        addTag(name, colorKey);
+      } else if ((form = e.target.closest('[data-action="edit-tag-form"]'))) {
+        e.preventDefault();
+        var editName = form.elements.name.value.trim();
+        var editColor = form.elements.color_key.value;
+        if (!editName) return;
+        updateTag(form.dataset.tagId, editName, editColor);
+      }
     });
   }
 
@@ -524,6 +565,56 @@
       renderTagsModalContent();
       renderAll();
       showToast('新增標籤失敗，請重試');
+    });
+  }
+
+  function updateTag(tagId, name, colorKey) {
+    var tag = tagById(tagId);
+    if (!tag) return;
+    var prevName = tag.name;
+    var prevColor = tag.color_key;
+    tag.name = name;
+    tag.color_key = colorKey;
+    state.editingTagId = null;
+    renderTagsModalContent();
+    renderAll();
+
+    Api.updateTag(tagId, name, colorKey).catch(function () {
+      tag.name = prevName;
+      tag.color_key = prevColor;
+      renderTagsModalContent();
+      renderAll();
+      showToast('更新標籤失敗，請重試');
+    });
+  }
+
+  function deleteTag(tagId) {
+    var tag = tagById(tagId);
+    if (!tag) return;
+    var catalogCount = state.catalog.filter(function (c) { return String(c.tag_id) === String(tagId); }).length;
+    var tripCount = state.tripList.filter(function (t) { return String(t.tag_id) === String(tagId); }).length;
+    var usedCount = catalogCount + tripCount;
+    var msg = usedCount > 0
+      ? '標籤「' + tag.name + '」目前有 ' + usedCount + ' 個品項使用中，刪除後這些品項會變成未分類（無標籤）。確定要刪除嗎？'
+      : '確定要刪除標籤「' + tag.name + '」嗎？';
+    if (!window.confirm(msg)) return;
+
+    var idx = state.tags.indexOf(tag);
+    state.tags.splice(idx, 1);
+    var touchedCatalog = state.catalog.filter(function (c) { return String(c.tag_id) === String(tagId); });
+    var touchedTrip = state.tripList.filter(function (t) { return String(t.tag_id) === String(tagId); });
+    touchedCatalog.forEach(function (c) { c.tag_id = ''; });
+    touchedTrip.forEach(function (t) { t.tag_id = ''; });
+    renderTagsModalContent();
+    renderAll();
+
+    Api.deleteTag(tagId).catch(function () {
+      state.tags.splice(idx, 0, tag);
+      touchedCatalog.forEach(function (c) { c.tag_id = tagId; });
+      touchedTrip.forEach(function (t) { t.tag_id = tagId; });
+      renderTagsModalContent();
+      renderAll();
+      showToast('刪除標籤失敗，請重試');
     });
   }
 

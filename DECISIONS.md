@@ -1,5 +1,16 @@
 # 決策紀錄
 
+## 2026-09-03（二）品項庫標籤顯示 + 標籤編輯/刪除
+
+- **刪除標籤前的使用數量統計，直接用前端已有的 state 算，沒有加一個「查詢使用數」的 GAS action**：`state.catalog` / `state.tripList` 本來就是頁面載入時整包抓下來放在記憶體裡，本地 `filter` 算 tag_id 符合的筆數就是即時且正確的，不需要多一趟後端往返。GAS 那邊 `deleteTag` 回傳的 `affectedCatalogCount`/`affectedTripListCount` 是伺服器實際刪除後的權威數字，只用來核對，不是拿來決定要不要跳確認框。
+- **確認提示用原生 `window.confirm()`**，沒有另外做 modal 元件——需求裡明講「可用現有 modal / confirm 的呈現方式，不用另外設計新元件」，原生 confirm 是這裡最省事、行為最直覺的選項（會阻塞、使用者一定會看到）。
+- **編輯/刪除標籤都走樂觀更新＋失敗回滾**，跟專案裡其他所有寫入操作（打勾、刪除品項等）的模式一致：本地先改、畫面先變，API 失敗才把 `state.tags` 與被清空 tag_id 的品項還原回去。因為 Catalog／TripList 資料本來就在前端記憶體裡，「編輯或刪除標籤後兩個分頁要同步」用本地更新就直接達成，不需要重新 fetch。
+- **品項庫管理列表加 tint 背景／badge，只加了一條 `.catalog-item .name-wrap { flex: 1 }` CSS**，沒有另外重繪整組樣式——badge 與 tint 都是直接沿用前一批已經做好的 `.tag-*` / `.badge-*` class，`.catalog-item` 本身的 border-bottom 清單列樣式維持不變，只是背景色會透出來，符合「不用重新設計一套」的指示。
+
+## GAS 後端需要重新部署
+
+`gas/Code.gs` 這次新增了 `updateTag` / `deleteTag` 兩個 action。**這一步一定要回瀏覽器操作**：Apps Script 編輯器貼上新版程式碼後，用 Deploy > Manage deployments，對現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）按編輯（鉛筆圖示）→ New version → Deploy，**不要建立新的部署**，這樣 `js/config.js` 裡的網址才不用跟著換。前端在這次重新部署完成前，標籤的「編輯」「刪除」按鈕點下去會因為後端還沒有這兩個 action 而失敗（樂觀更新會先讓畫面變、然後跳「更新/刪除標籤失敗」的 toast 並復原）。
+
 ## 2026-09-03 UI/UX 微調：標籤 badge、日常頁視覺統一
 
 - **標籤 badge 配色**：新增 9 組「深色文字」CSS 變數（`--tag-*-deep`），badge 背景維持白底、邊框用 `currentColor` 直接吃文字色，避免每個顏色都要多寫一條 border 規則。此變更只套用在本次清單列（`trip-item`），品項庫列目前沒有背景色塊問題所以不動，範圍對齊需求描述。

@@ -33,6 +33,8 @@
     deleteTripItem: function (tripId) { return callGas('deleteTripItem', { trip_id: tripId }); },
 
     getTags: function () { return callGas('getTags'); },
-    addTag: function (name, colorKey) { return callGas('addTag', { name: name, color_key: colorKey }); }
+    addTag: function (name, colorKey) { return callGas('addTag', { name: name, color_key: colorKey }); },
+    updateTag: function (tagId, name, colorKey) { return callGas('updateTag', { tag_id: tagId, name: name, color_key: colorKey }); },
+    deleteTag: function (tagId) { return callGas('deleteTag', { tag_id: tagId }); }
   };
 })();
