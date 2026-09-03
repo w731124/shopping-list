@@ -20,6 +20,10 @@
   --tag-purple: #BA68C8; --tag-purple-tint: #F5EBF7;
   --tag-pink: #F06292;   --tag-pink-tint: #FCEAF0;
   --tag-gray: #B0AEA8;   --tag-gray-tint: #F1F0EE;
+
+  --tag-red-deep: #C0392B;    --tag-orange-deep: #B9770E; --tag-yellow-deep: #9A7D0A;
+  --tag-green-deep: #2E7D32;  --tag-teal-deep: #00695C;   --tag-blue-deep: #1565C0;
+  --tag-purple-deep: #7B1FA2; --tag-pink-deep: #AD1457;   --tag-gray-deep: #6B6963;
 }
 
 * { box-sizing: border-box; }
@@ -41,9 +45,12 @@ body {
 }
 .app-title { font-size: 1.25rem; font-weight: 700; margin: 0; }
 .icon-btn {
+  display: flex; align-items: center; gap: 6px;
   background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-sm);
-  font-size: 1.1rem; padding: 8px 10px; color: #fff;
+  padding: 8px 10px; color: #fff;
 }
+.icon-btn-emoji { font-size: 1.1rem; line-height: 1; }
+.icon-btn-label { font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.92); white-space: nowrap; }
 
 .tabs {
   position: sticky; top: 56px; z-index: 9;
@@ -93,6 +100,20 @@ body {
 .trip-item .tag-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .trip-item .btn-del { background: none; border: none; color: var(--text-muted); font-size: 1.1rem; padding: 4px 6px; }
 
+.tag-badge {
+  font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  white-space: nowrap; flex-shrink: 0; background: var(--surface); border: 1px solid currentColor;
+}
+.badge-red    { color: var(--tag-red-deep); }
+.badge-orange { color: var(--tag-orange-deep); }
+.badge-yellow { color: var(--tag-yellow-deep); }
+.badge-green  { color: var(--tag-green-deep); }
+.badge-teal   { color: var(--tag-teal-deep); }
+.badge-blue   { color: var(--tag-blue-deep); }
+.badge-purple { color: var(--tag-purple-deep); }
+.badge-pink   { color: var(--tag-pink-deep); }
+.badge-gray   { color: var(--tag-gray-deep); }
+
 .tag-red    { background: var(--tag-red-tint); }
 .tag-orange { background: var(--tag-orange-tint); }
 .tag-yellow { background: var(--tag-yellow-tint); }
@@ -127,6 +148,9 @@ details.collapsible .catalog-list { margin-top: 8px; }
 .catalog-item .name-wrap, .store-manage-item .name-wrap { display: flex; align-items: center; gap: 8px; }
 
 .inline-form { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+.section-header.catalog-header { flex-wrap: wrap; row-gap: 8px; }
+.section-header.catalog-header .catalog-inline-form { margin-top: 0; flex: 1 1 auto; justify-content: flex-end; }
 .inline-form input[type="text"] {
   flex: 1; min-width: 120px; padding: 8px 10px; border: 1px solid var(--border);
   border-radius: var(--radius-sm); font-size: 0.9rem;

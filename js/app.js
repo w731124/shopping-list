@@ -82,11 +82,17 @@
           '<button class="btn-add" data-action="open-add-trip" data-category-id="' + dailyCat.id + '">+ 加入項目</button>' +
         '</div>' +
         renderTripList(items) +
-        '<details class="collapsible">' +
-          '<summary>品項庫管理</summary>' +
-          renderCatalogList(catalogItems) +
-          renderAddCatalogForm(dailyCat.id) +
-        '</details>' +
+      '</div>' +
+      '<div class="section" data-category-id="' + dailyCat.id + '">' +
+        '<div class="section-header catalog-header">' +
+          '<h2 class="section-title">品項庫管理</h2>' +
+          '<form class="inline-form catalog-inline-form" data-action="add-catalog-form" data-category-id="' + dailyCat.id + '">' +
+            '<input type="text" name="name" placeholder="新增品項庫名稱" required>' +
+            renderTagSelect() +
+            '<button class="btn-add" type="submit">+ 加入項目</button>' +
+          '</form>' +
+        '</div>' +
+        renderCatalogList(catalogItems) +
       '</div>';
 
     bindSectionEvents(panel);
@@ -156,6 +162,7 @@
       '<input type="checkbox" class="chk" data-action="toggle-check" data-trip-id="' + item.trip_id + '" ' + (checked ? 'checked' : '') + '>' +
       (tag ? '<span class="tag-dot ' + dotClass + '"></span>' : '') +
       '<span class="name">' + escapeHtml(item.name) + '</span>' +
+      (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
       '<button class="btn-del" data-action="delete-trip" data-trip-id="' + item.trip_id + '">✕</button>' +
     '</li>';
   }
@@ -181,7 +188,7 @@
     return '<form class="inline-form" data-action="add-catalog-form" data-category-id="' + categoryId + '">' +
       '<input type="text" name="name" placeholder="新增品項庫名稱" required>' +
       renderTagSelect() +
-      '<button class="btn-add" type="submit">新增</button>' +
+      '<button class="btn-add" type="submit">+ 加入項目</button>' +
     '</form>';
   }
 
