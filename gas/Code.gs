@@ -142,6 +142,7 @@ function handle_(e) {
 
       case 'getCatalog': result = ok_(getCatalog_(params)); break;
       case 'addCatalogItem': result = ok_(addCatalogItem_(params)); break;
+      case 'updateCatalogItem': result = ok_(updateCatalogItem_(params)); break;
       case 'deleteCatalogItem': result = ok_(deleteCatalogItem_(params)); break;
 
       case 'getTripList': result = ok_(sheetToObjects_(SHEETS.TRIPLIST)); break;
@@ -208,6 +209,12 @@ function addCatalogItem_(p) {
     created_at: new Date().toISOString()
   };
   return appendRow_(SHEETS.CATALOG, obj);
+}
+
+function updateCatalogItem_(p) {
+  var updated = updateRowByKey_(SHEETS.CATALOG, 'item_id', p.item_id, { name: p.name, tag_id: p.tag_id || '' });
+  if (!updated) throw '找不到品項: ' + p.item_id;
+  return { item_id: p.item_id, name: p.name, tag_id: p.tag_id || '' };
 }
 
 function deleteCatalogItem_(p) {

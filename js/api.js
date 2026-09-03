@@ -25,6 +25,9 @@
     addCatalogItem: function (categoryId, name, tagId) {
       return callGas('addCatalogItem', { category_id: categoryId, name: name, tag_id: tagId });
     },
+    updateCatalogItem: function (itemId, name, tagId) {
+      return callGas('updateCatalogItem', { item_id: itemId, name: name, tag_id: tagId });
+    },
     deleteCatalogItem: function (itemId) { return callGas('deleteCatalogItem', { item_id: itemId }); },
 
     getTripList: function () { return callGas('getTripList'); },

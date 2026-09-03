@@ -13,7 +13,8 @@
     tripList: [],
     tags: [],
     activeTab: 'daily',
-    editingTagId: null
+    editingTagId: null,
+    editingCatalogItemId: null
   };
 
   function tmpId() { return 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
@@ -170,21 +171,34 @@
 
   function renderCatalogList(items) {
     if (!items.length) return '<p class="empty-hint">品項庫是空的</p>';
-    return '<ul class="catalog-list">' + items.map(function (c) {
-      var tag = tagById(c.tag_id);
-      var tagClass = tag ? 'tag-' + tag.color_key : '';
-      return '<li class="catalog-item ' + tagClass + '">' +
-        '<span class="name-wrap">' +
-          (tag ? '<span class="tag-dot dot-' + tag.color_key + '"></span>' : '') +
-          escapeHtml(c.name) +
-        '</span>' +
-        (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
-        '<span>' +
-          '<button class="btn-ghost" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
-          '<button class="btn-danger-text" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
-        '</span>' +
+    return '<ul class="catalog-list">' + items.map(renderCatalogRow).join('') + '</ul>';
+  }
+
+  function renderCatalogRow(c) {
+    if (state.editingCatalogItemId === c.item_id) {
+      return '<li class="catalog-item">' +
+        '<form class="inline-form" data-action="edit-catalog-form" data-item-id="' + c.item_id + '">' +
+          '<input type="text" name="name" value="' + escapeHtml(c.name) + '" required>' +
+          renderTagSelect(c.tag_id) +
+          '<button class="btn-add" type="submit">儲存</button>' +
+          '<button class="btn-ghost" type="button" data-action="cancel-edit-catalog">取消</button>' +
+        '</form>' +
       '</li>';
-    }).join('') + '</ul>';
+    }
+    var tag = tagById(c.tag_id);
+    var tagClass = tag ? 'tag-' + tag.color_key : '';
+    return '<li class="catalog-item ' + tagClass + '">' +
+      '<span class="name-wrap">' +
+        (tag ? '<span class="tag-dot dot-' + tag.color_key + '"></span>' : '') +
+        escapeHtml(c.name) +
+      '</span>' +
+      (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
+      '<span>' +
+        '<button class="btn-ghost" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
+        '<button class="btn-ghost" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button> ' +
+        '<button class="btn-danger-text" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
+      '</span>' +
+    '</li>';
   }
 
   function renderAddCatalogForm(categoryId) {
@@ -219,6 +233,12 @@
       deleteCatalogItem(t.dataset.itemId);
     } else if ((t = e.target.closest('[data-action="add-trip-from-catalog-inline"]'))) {
       addTripItem({ catalog_item_id: t.dataset.itemId, category_id: t.dataset.categoryId });
+    } else if ((t = e.target.closest('[data-action="start-edit-catalog"]'))) {
+      state.editingCatalogItemId = t.dataset.itemId;
+      renderAll();
+    } else if ((t = e.target.closest('[data-action="cancel-edit-catalog"]'))) {
+      state.editingCatalogItemId = null;
+      renderAll();
     }
   }
 
@@ -240,6 +260,12 @@
       if (!name) return;
       addCatalogItem(t.dataset.categoryId, name, tagId);
       t.reset();
+    } else if ((t = e.target.closest('[data-action="edit-catalog-form"]'))) {
+      e.preventDefault();
+      var editName = t.elements.name.value.trim();
+      var editTagId = t.elements.tag_id.value;
+      if (!editName) return;
+      updateCatalogItem(t.dataset.itemId, editName, editTagId);
     } else if ((t = e.target.closest('[data-action="add-store-form"]'))) {
       e.preventDefault();
       var storeName = t.elements.name.value.trim();
@@ -352,6 +378,24 @@
       if (idx > -1) state.catalog.splice(idx, 1);
       renderAll();
       showToast('新增品項庫失敗，請重試');
+    });
+  }
+
+  function updateCatalogItem(itemId, name, tagId) {
+    var item = state.catalog.filter(function (c) { return String(c.item_id) === String(itemId); })[0];
+    if (!item) return;
+    var prevName = item.name;
+    var prevTagId = item.tag_id;
+    item.name = name;
+    item.tag_id = tagId;
+    state.editingCatalogItemId = null;
+    renderAll();
+
+    Api.updateCatalogItem(itemId, name, tagId).catch(function () {
+      item.name = prevName;
+      item.tag_id = prevTagId;
+      renderAll();
+      showToast('更新品項失敗，請重試');
     });
   }
 

@@ -1,5 +1,15 @@
 # 決策紀錄
 
+## 2026-09-03（三）品項庫（Catalog）新增編輯功能
+
+- **UI 模式直接複製標籤編輯（`editingTagId`）那一套，改成 `editingCatalogItemId`**：同一個 `.catalog-item` 列表項目點「編輯」後，該列整個換成 inline 表單（名稱 input + 標籤 select，預帶目前值）+ 儲存/取消，跟前一批標籤設定彈窗的編輯體驗一致，沒有另外做 modal，符合「不用重新設計一套 UI 元件」。
+- **明確不連動 TripList**：`updateCatalogItem_` 只改 Catalog 表這一筆的 name/tag_id，TripList 裡已經加入的品項是「加入當下的快照」，改品項庫不會回頭改到本次清單已存在的項目——這是需求裡明講的預期行為，不是遺漏。
+- **樂觀更新＋失敗回滾**，跟專案裡其他所有寫入操作一致：本地先改 `state.catalog` 裡對應項目的 name/tag_id 並清掉編輯狀態，API 失敗才把兩個欄位還原、重新打開編輯不會自動重試。
+
+## GAS 後端需要重新部署
+
+`gas/Code.gs` 這次新增了 `updateCatalogItem` action。跟前兩次一樣，**要回瀏覽器操作**：Apps Script 編輯器貼上新版程式碼 → Manage deployments → 編輯現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）→ New version → Deploy，不要新建部署。部署完成前，品項庫的「編輯」按鈕點下去會先讓畫面樂觀更新，然後因為後端還沒有這個 action 而失敗回滾、跳「更新品項失敗」的 toast。
+
 ## 2026-09-03（二）品項庫標籤顯示 + 標籤編輯/刪除
 
 - **刪除標籤前的使用數量統計，直接用前端已有的 state 算，沒有加一個「查詢使用數」的 GAS action**：`state.catalog` / `state.tripList` 本來就是頁面載入時整包抓下來放在記憶體裡，本地 `filter` 算 tag_id 符合的筆數就是即時且正確的，不需要多一趟後端往返。GAS 那邊 `deleteTag` 回傳的 `affectedCatalogCount`/`affectedTripListCount` 是伺服器實際刪除後的權威數字，只用來核對，不是拿來決定要不要跳確認框。
