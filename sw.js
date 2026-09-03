@@ -1,5 +1,8 @@
 // 只快取畫面外殼（HTML/CSS/JS），不快取資料。GAS API 一律略過快取，直接走網路。
-var CACHE_NAME = 'shopping-list-shell-v1';
+// 外殼採「網路優先、失敗才退回快取」：使用者已確認賣場收訊良好、不需要離線讀寫，
+// 這裡只是離線時的保底，優先權永遠是「有網路就一定要看到最新部署」，避免改版後
+// 使用者端因為舊快取一直卡在舊版畫面。每次外殼檔案有實質變動就把版本號往上加一。
+var CACHE_NAME = 'shopping-list-shell-v2';
 var SHELL_FILES = [
   './',
   './index.html',
@@ -32,8 +35,12 @@ self.addEventListener('fetch', function (event) {
   if (event.request.method !== 'GET' || url.indexOf('script.google.com') > -1) return;
 
   event.respondWith(
-    caches.match(event.request).then(function (cached) {
-      return cached || fetch(event.request);
+    fetch(event.request).then(function (response) {
+      var copy = response.clone();
+      caches.open(CACHE_NAME).then(function (cache) { cache.put(event.request, copy); });
+      return response;
+    }).catch(function () {
+      return caches.match(event.request);
     })
   );
 });
