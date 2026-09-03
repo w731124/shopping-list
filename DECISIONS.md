@@ -1,5 +1,12 @@
 # 決策紀錄
 
+## 2026-09-03（四）品項庫操作按鈕樣式 + 黃／橙標籤色區隔
+
+- **「加入」新增一個 `.btn-add-light` class，沒有直接改 `.btn-ghost`**：因為 `.btn-ghost` 同時也是「編輯」「取消」在用的中性樣式，若直接把 `.btn-ghost` 改成偏主色調，會連帶把「編輯」「取消」也染色，不符合需求裡「加入＝主色調、編輯＝中性色」的區隔意圖。`.btn-add-light` 直接沿用既有的 `--primary-tint` / `--primary-dark` 變數，沒有新增顏色 token。
+- **「刪除」直接修改 `.btn-danger-text` 本身**（不是另外開一個 class）：這個 class 目前也是「標籤設定」彈窗刪除標籤按鈕在共用，直接升級它的按鈕感（背景用既有的 `--tag-red-tint`、加邊框）會讓標籤刪除按鈕一併變得更好點擊，是同一組件的一致性改善，不是意外的範圍擴大。
+- **32px 觸控熱區只加在 `.catalog-item` 這個情境下**（`.catalog-item .btn-add-light/.btn-ghost/.btn-danger-text { min-height:32px }`），沒有動 `.btn-ghost`／`.btn-danger-text` 的全域尺寸——避免動到標籤設定彈窗或本次清單目前已經夠緊湊的排版。
+- **黃色只改了 `--tag-yellow` / `--tag-yellow-tint` 兩個變數**，其餘標籤色不動；因為 `.dot-yellow`／`.tag-yellow`／`.badge-yellow` 都是引用變數，沒有另外找地方改。已用 Playwright 截圖確認：`鮭魚/大餐`（黃）與 `肉片/平日晚餐`（橙）兩列現在背景色可以一眼分辨。
+
 ## 2026-09-03（三）品項庫（Catalog）新增編輯功能
 
 - **UI 模式直接複製標籤編輯（`editingTagId`）那一套，改成 `editingCatalogItemId`**：同一個 `.catalog-item` 列表項目點「編輯」後，該列整個換成 inline 表單（名稱 input + 標籤 select，預帶目前值）+ 儲存/取消，跟前一批標籤設定彈窗的編輯體驗一致，沒有另外做 modal，符合「不用重新設計一套 UI 元件」。

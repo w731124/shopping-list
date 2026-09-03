@@ -13,7 +13,7 @@
 
   --tag-red: #E57373;    --tag-red-tint: #FCEBEB;
   --tag-orange: #FFB74D; --tag-orange-tint: #FFF4E4;
-  --tag-yellow: #F4C430; --tag-yellow-tint: #FFF8E1;
+  --tag-yellow: #FDD835; --tag-yellow-tint: #FFFBE0;
   --tag-green: #81C784;  --tag-green-tint: #EEF7EE;
   --tag-teal: #4DB6AC;   --tag-teal-tint: #E7F5F3;
   --tag-blue: #64B5F6;   --tag-blue-tint: #EAF4FD;
@@ -82,7 +82,18 @@ body {
   background: none; border: 1px solid var(--border); color: var(--text);
   border-radius: 999px; padding: 6px 12px; font-size: 0.85rem;
 }
-.btn-danger-text { background: none; border: none; color: var(--danger); font-size: 0.85rem; padding: 4px 6px; }
+.btn-add-light {
+  background: var(--primary-tint); border: none; color: var(--primary-dark);
+  border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600;
+}
+.btn-danger-text {
+  background: var(--tag-red-tint); border: 1px solid var(--danger); color: var(--danger);
+  border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600;
+}
+
+.catalog-item .btn-add-light, .catalog-item .btn-ghost, .catalog-item .btn-danger-text {
+  min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
+}
 
 .trip-list, .catalog-list, .tag-manage-list, .store-manage-list { list-style: none; margin: 0; padding: 0; }
 

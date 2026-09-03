@@ -194,7 +194,7 @@
       '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
       '<span>' +
-        '<button class="btn-ghost" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
+        '<button class="btn-add-light" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
         '<button class="btn-ghost" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button> ' +
         '<button class="btn-danger-text" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
       '</span>' +
