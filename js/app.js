@@ -22,6 +22,22 @@
   function tagById(tagId) { return state.tags.filter(function (t) { return String(t.tag_id) === String(tagId); })[0]; }
   function categoryById(id) { return state.categories.filter(function (c) { return String(c.id) === String(id); })[0]; }
 
+  // 「品項庫 → 本次清單」的重複加入判斷，只套用在日常採購（賣場品項庫可無限次加入）
+  function isDuplicateInDailyTrip(categoryId, catalogItemId) {
+    var cat = categoryById(categoryId);
+    if (!cat || cat.type !== 'daily') return false;
+    return state.tripList.some(function (t) {
+      return t.catalog_item_id && String(t.catalog_item_id) === String(catalogItemId);
+    });
+  }
+
+  function confirmDuplicateAdd(categoryId, catalogItemId) {
+    if (!isDuplicateInDailyTrip(categoryId, catalogItemId)) return true;
+    var catalogItem = state.catalog.filter(function (c) { return String(c.item_id) === String(catalogItemId); })[0];
+    var name = catalogItem ? catalogItem.name : '此品項';
+    return window.confirm(name + '已經在本次清單中，仍要再加入一次嗎？');
+  }
+
   function showToast(msg) {
     var root = document.getElementById('toast-root');
     var el = document.createElement('div');
@@ -160,11 +176,14 @@
     var tagClass = tag ? 'tag-' + tag.color_key : '';
     var dotClass = tag ? 'dot-' + tag.color_key : '';
     var checked = item.checked === true || item.checked === 'TRUE';
+    var cat = categoryById(item.category_id);
+    var showPromote = !!cat && cat.type === 'daily' && !item.catalog_item_id && !item._promotingToCatalog;
     return '<li class="trip-item ' + tagClass + (checked ? ' is-checked' : '') + (item._pending ? ' is-pending' : '') + '" data-trip-id="' + item.trip_id + '">' +
       '<input type="checkbox" class="chk" data-action="toggle-check" data-trip-id="' + item.trip_id + '" ' + (checked ? 'checked' : '') + '>' +
       (tag ? '<span class="tag-dot ' + dotClass + '"></span>' : '') +
       '<span class="name">' + escapeHtml(item.name) + '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
+      (showPromote ? '<button class="btn-solid-primary" data-action="promote-to-catalog" data-trip-id="' + item.trip_id + '">加入品項庫</button>' : '') +
       '<button class="btn-del" data-action="delete-trip" data-trip-id="' + item.trip_id + '">✕</button>' +
     '</li>';
   }
@@ -232,7 +251,11 @@
     } else if ((t = e.target.closest('[data-action="delete-catalog"]'))) {
       deleteCatalogItem(t.dataset.itemId);
     } else if ((t = e.target.closest('[data-action="add-trip-from-catalog-inline"]'))) {
-      addTripItem({ catalog_item_id: t.dataset.itemId, category_id: t.dataset.categoryId });
+      var addItemId = t.dataset.itemId, addCategoryId = t.dataset.categoryId;
+      if (!confirmDuplicateAdd(addCategoryId, addItemId)) return;
+      addTripItem({ catalog_item_id: addItemId, category_id: addCategoryId });
+    } else if ((t = e.target.closest('[data-action="promote-to-catalog"]'))) {
+      addTripItemToCatalog(t.dataset.tripId);
     } else if ((t = e.target.closest('[data-action="start-edit-catalog"]'))) {
       state.editingCatalogItemId = t.dataset.itemId;
       renderAll();
@@ -359,6 +382,39 @@
       state.tripList.splice(idx, 0, item);
       renderAll();
       showToast('刪除失敗，請重試');
+    });
+  }
+
+  // 本次清單一次性項目「升級」為品項庫常駐品項，僅限日常採購
+  function addTripItemToCatalog(tripId) {
+    var item = state.tripList.filter(function (i) { return String(i.trip_id) === String(tripId); })[0];
+    if (!item || item.catalog_item_id || item._promotingToCatalog) return;
+    var cat = categoryById(item.category_id);
+    if (!cat || cat.type !== 'daily') return;
+
+    var existing = state.catalog.filter(function (c) {
+      return String(c.category_id) === String(item.category_id) && c.name === item.name;
+    })[0];
+    if (existing) {
+      item.catalog_item_id = existing.item_id;
+      renderAll();
+      showToast('品項庫中已有「' + item.name + '」，未重複新增');
+      return;
+    }
+
+    item._promotingToCatalog = true;
+    renderAll();
+
+    Api.addCatalogItem(item.category_id, item.name, item.tag_id).then(function (saved) {
+      state.catalog.push(saved);
+      item.catalog_item_id = saved.item_id;
+      item._promotingToCatalog = false;
+      renderAll();
+      showToast('已加入品項庫');
+    }).catch(function () {
+      item._promotingToCatalog = false;
+      renderAll();
+      showToast('加入品項庫失敗，請重試');
     });
   }
 
@@ -493,7 +549,9 @@
       }
       var pick = e.target.closest('[data-action="pick-catalog-item"]');
       if (pick) {
-        addTripItem({ catalog_item_id: pick.dataset.itemId, category_id: pick.dataset.categoryId });
+        var pickItemId = pick.dataset.itemId, pickCategoryId = pick.dataset.categoryId;
+        if (!confirmDuplicateAdd(pickCategoryId, pickItemId)) return;
+        addTripItem({ catalog_item_id: pickItemId, category_id: pickCategoryId });
         closeModal();
       }
     });
