@@ -79,20 +79,21 @@ body {
   padding: 7px 14px; font-size: 0.85rem; font-weight: 600;
 }
 .btn-ghost {
-  background: none; border: 1px solid var(--border); color: var(--text);
+  background: none; border: 1.5px solid var(--text-muted); color: var(--text);
   border-radius: 999px; padding: 6px 12px; font-size: 0.85rem;
 }
 .btn-add-light {
-  background: var(--primary-tint); border: none; color: var(--primary-dark);
+  background: var(--primary-tint); border: 1.5px solid var(--primary); color: var(--primary-dark);
   border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600;
 }
 .btn-danger-text {
-  background: var(--tag-red-tint); border: 1px solid var(--danger); color: var(--danger);
+  background: var(--tag-red-tint); border: 1.5px solid var(--danger); color: var(--danger);
   border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600;
 }
 
 .catalog-item .btn-add-light, .catalog-item .btn-ghost, .catalog-item .btn-danger-text {
   min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
 }
 
 .trip-list, .catalog-list, .tag-manage-list, .store-manage-list { list-style: none; margin: 0; padding: 0; }

@@ -1,5 +1,10 @@
 # 決策紀錄
 
+## 2026-09-03（五）品項庫按鈕邊框加強＋圓角改方形區隔標籤
+
+- 使用者反饋前一版的邊框幾乎看不出來，改成：三個按鈕邊框都加粗到 `1.5px`，`.btn-ghost`（編輯）邊框色從很淡的 `var(--border)` 改成對比較高的 `var(--text-muted)`；`.btn-add-light`（加入）補上原本沒有的 `var(--primary)` 邊框；`.btn-danger-text`（刪除）維持 `var(--danger)` 只加粗。這三個 class 是共用元件（`.btn-ghost`／`.btn-danger-text` 也用在標籤設定彈窗），邊框強化直接套用在共用 class 上，全站沿用該 class 的地方都會一併變清楚。
+- 圓角改用 `var(--radius-sm)`（8px）**只限定在 `.catalog-item` 情境**（`.catalog-item .btn-add-light/.btn-ghost/.btn-danger-text` 這個既有的 32px 熱區規則裡多加一行），跟頁面上其他方形元素（`.section`、`.trip-item`、輸入框）的圓角尺寸一致，藉此跟左側 pill 形狀的標籤 badge/dot 做出形狀區隔；`.btn-ghost`／`.btn-danger-text` 在其他情境（例如標籤設定彈窗）維持原本的 999px 全圓角，不受影響。
+
 ## 2026-09-03（四）品項庫操作按鈕樣式 + 黃／橙標籤色區隔
 
 - **「加入」新增一個 `.btn-add-light` class，沒有直接改 `.btn-ghost`**：因為 `.btn-ghost` 同時也是「編輯」「取消」在用的中性樣式，若直接把 `.btn-ghost` 改成偏主色調，會連帶把「編輯」「取消」也染色，不符合需求裡「加入＝主色調、編輯＝中性色」的區隔意圖。`.btn-add-light` 直接沿用既有的 `--primary-tint` / `--primary-dark` 變數，沒有新增顏色 token。
