@@ -186,6 +186,14 @@ details.collapsible .catalog-list { margin-top: 8px; }
 .catalog-item:last-child, .store-manage-item:last-child, .tag-manage-item:last-child { border-bottom: none; }
 .catalog-item .name-wrap, .store-manage-item .name-wrap { display: flex; align-items: center; gap: 8px; }
 .catalog-item .name-wrap { flex: 1; min-width: 7em; }
+.store-manage-item .name-wrap { flex: 1; }
+
+.store-manage-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 4px 0; font-size: 0.78rem; color: var(--text-muted);
+}
+.store-manage-header .name-wrap { flex: 1; }
+.store-manage-header-spacer { width: 56px; flex-shrink: 0; }
 
 .catalog-item .item-actions {
   display: flex; gap: 6px; flex-shrink: 0; flex-wrap: nowrap;

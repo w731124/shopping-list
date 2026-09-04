@@ -150,7 +150,12 @@
 
     html +=
       '<details class="collapsible section">' +
-        '<summary>賣場管理（新增／顯示）</summary>' +
+        '<summary>賣場管理</summary>' +
+        '<div class="store-manage-header">' +
+          '<span class="name-wrap"></span>' +
+          '<span class="store-manage-header-label">切換顯示</span>' +
+          '<span class="store-manage-header-spacer"></span>' +
+        '</div>' +
         '<ul class="store-manage-list">' +
           stores.map(function (s) {
             var isVisible = s.visible === true || s.visible === 'TRUE';
