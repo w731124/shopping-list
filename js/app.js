@@ -23,7 +23,8 @@
     tags: [],
     activeTab: 'daily',
     editingTagId: null,
-    editingCatalogItemId: null
+    editingCatalogItemId: null,
+    storeManageOpen: false
   };
 
   function tmpId() { return 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
@@ -149,7 +150,7 @@
     var html = '<div id="store-cards-list" data-sortable="true">' + storeCardsHtml + '</div>';
 
     html +=
-      '<details class="collapsible section">' +
+      '<details class="collapsible section"' + (state.storeManageOpen ? ' open' : '') + '>' +
         '<summary>賣場管理</summary>' +
         '<div class="store-manage-header">' +
           '<span class="name-wrap"></span>' +
@@ -182,6 +183,17 @@
       if (section) initTripListSortable(section.querySelector('.trip-list'), store.id);
     });
     initStoreCardsSortable(document.getElementById('store-cards-list'));
+    bindStoreManageToggle(panel);
+  }
+
+  // <details> 展開/收合狀態由瀏覽器記在 DOM 上，但 renderStorePanel 每次都整段重繪 DOM，
+  // 所以改成用 state.storeManageOpen 自己記，每次渲染完都要重新綁一次 toggle 事件
+  function bindStoreManageToggle(panel) {
+    var details = panel.querySelector('.collapsible');
+    if (!details) return;
+    details.addEventListener('toggle', function () {
+      state.storeManageOpen = details.open;
+    });
   }
 
   function renderTripList(items) {

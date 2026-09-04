@@ -1,5 +1,11 @@
 # 決策紀錄
 
+## 2026-09-04（七）賣場管理展開狀態保持修正
+
+- **展開/收合狀態從「瀏覽器記在 `<details>` DOM 上」改成「`state.storeManageOpen` 自己記」**：根因是 `renderStorePanel()` 每次都整段重新產生 HTML（包含全新的 `<details>` 元素），瀏覽器原生記憶的開合狀態會隨著舊 DOM 一起被丟棄。新增賣場、切換顯示、刪除賣場這三個動作都會觸發 `renderAll()`，所以只要照著這個模式讓 `<details>` 的 `open` 屬性依 `state.storeManageOpen` 決定即可，跟專案裡其他 UI 狀態（`editingTagId`、`editingCatalogItemId` 等）用 `state` 記、渲染時讀出來的做法一致。
+- **`toggle` 事件監聽器綁在 `bindStoreManageToggle(panel)`，每次 `renderStorePanel()` 渲染完都重新呼叫一次**：因為 `panel.innerHTML` 整段重寫會讓舊的 `<details>` 元素連同它上面綁的監聽器一起消失，沒辦法用一次性綁定或事件委派繞過（`toggle` 事件不會冒泡，委派到外層容器接不到），所以採用「每次渲染後重新綁」，跟 `initTripListSortable`／`initStoreCardsSortable` 每次渲染後重新初始化 Sortable 是同一種模式。
+- **已用 Playwright 驗證**：手動展開後，切換顯示/隱藏、新增賣場、刪除賣場都維持展開；手動收合後，切換顯示/隱藏也維持收合（不會意外展開）；整個頁面重新整理（`page.reload()`）後回到預設收合狀態。過程中新增/刪除的測試賣場都已清理乾淨。這批純前端調整，不涉及 GAS。
+
 ## 2026-09-04（六）賣場管理清單排版修正
 
 - **`.store-manage-item .name-wrap { flex: 1; }`**：跟 `.catalog-item .name-wrap` 同樣的道理，名稱欄位補上 `flex:1` 佔滿剩餘空間，才能把切換開關跟刪除按鈕推齊到最右側，不受名稱長短影響。已用 Playwright 量測確認：所有列的刪除按鈕右邊界都對齊在同一個 x 座標，不會因賣場名稱長短跑位。
