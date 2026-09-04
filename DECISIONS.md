@@ -1,5 +1,16 @@
 # 決策紀錄
 
+## 2026-09-04（八）事件監聽器累積修正 + GAS 寫入動作防護
+
+- **`bindSectionEvents` 用 `root.dataset.eventsBound` 當旗標**：`#panel-daily`／`#panel-store` 這兩個容器節點本身從頭到尾不會被換掉（只有 `innerHTML` 整段重寫），`dataset` 掛在容器節點本身上不會因為子節點被整段替換而重置，用它記錄「這個容器綁過事件了嗎」剛好對應這個 DOM 結構特性，比另外開一個全域變數或 `WeakSet` 記錄「哪些節點綁過」更直接。
+- **只修 `bindSectionEvents`，Modal／`bindStoreManageToggle` 都不用動**：這兩處綁定的對象（`#modal-overlay`、`<details>`）都是每次都整個重新 `insertHTML` 出來的全新節點，舊節點連同綁在它身上的監聽器會隨 DOM 一起被瀏覽器回收，不會有累加問題——這點需求文件裡已經確認過，這次沒有重新去驗證這兩處（沒有累積問題可驗證），只驗證了 `bindSectionEvents` 本身。
+- **GAS `handle_` 多吃一個 `method` 參數，只在 `GET` 呼叫非 `get` 開頭的 action 時擋下**：用正規表示式 `/^get/` 判斷「讀取類」，理由是專案裡所有讀取 action 命名慣例本來就是 `get` 開頭（`getCategories`／`getCatalog`／`getTripList`／`getTags`），寫入/刪除/排序類 action 沒有一個是這個開頭，靠命名慣例做判斷不用另外維護一份 action 白名單/黑名單清單，之後新增 action 只要维持這個命名慣例就會自動被正確分類，不用回頭改這條檢查邏輯。檢查放在 `try` 區塊、`ensureSortOrderColumn_` 呼叫之前，被擋下的請求不會執行任何資料庫遷移或寫入動作。
+- **已用 Playwright 驗證前端修正**：反覆點擊同一個 checkbox 8 次（觸發 8 次 `renderAll` → 8 次原本會疊加的 `bindSectionEvents` 呼叫）後，監聽網路請求確認單擊一次品項庫「加入」按鈕只送出 1 次 `addTripItem` 請求（如果沒修正，應該會是 9 次），測試新增的資料已刪除還原。GAS 那段因為涉及部署後才會生效的行為（用瀏覽器網址列直接打 GET 觸發寫入），這次沒有實際部署去測試，純靠程式碼比對需求文件逐字覆核確認邏輯正確。
+
+## GAS 後端需要重新部署
+
+`gas/Code.gs` 這次修改了 `doGet`／`doPost`／`handle_` 的呼叫方式，新增「GET 呼叫非讀取類 action 會被擋下」的檢查。**這一步要回瀏覽器操作**：Apps Script 編輯器貼上新版 `gas/Code.gs` 全部內容 → Deploy > Manage deployments，對現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）按編輯（鉛筆圖示）→ New version → Deploy，**不要建立新的部署**。部署完成後，可以手動用瀏覽器網址列打開 `GAS網址?action=getCategories` 確認還能正常回應（讀取類不受影響），以及打開 `GAS網址?action=deleteCategory&category_id=test` 之類的網址，確認會收到「此操作僅允許透過 POST 呼叫」的錯誤訊息、不會真的執行任何動作。
+
 ## 2026-09-04（七）賣場管理展開狀態保持修正
 
 - **展開/收合狀態從「瀏覽器記在 `<details>` DOM 上」改成「`state.storeManageOpen` 自己記」**：根因是 `renderStorePanel()` 每次都整段重新產生 HTML（包含全新的 `<details>` 元素），瀏覽器原生記憶的開合狀態會隨著舊 DOM 一起被丟棄。新增賣場、切換顯示、刪除賣場這三個動作都會觸發 `renderAll()`，所以只要照著這個模式讓 `<details>` 的 `open` 屬性依 `state.storeManageOpen` 決定即可，跟專案裡其他 UI 狀態（`editingTagId`、`editingCatalogItemId` 等）用 `state` 記、渲染時讀出來的做法一致。

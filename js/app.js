@@ -354,6 +354,8 @@
 
   // ---------- 事件綁定（每次重繪後對該容器綁一次，用委派） ----------
   function bindSectionEvents(root) {
+    if (root.dataset.eventsBound === 'true') return;
+    root.dataset.eventsBound = 'true';
     root.addEventListener('click', onSectionClick);
     root.addEventListener('submit', onSectionSubmit);
     root.addEventListener('change', onSectionChange);

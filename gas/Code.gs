@@ -224,13 +224,13 @@ function reorderItems_(sheetName, idField, categoryId, orderedIds) {
 
 // ---------- 入口 ----------
 function doGet(e) {
-  return handle_(e);
+  return handle_(e, 'GET');
 }
 function doPost(e) {
-  return handle_(e);
+  return handle_(e, 'POST');
 }
 
-function handle_(e) {
+function handle_(e, method) {
   var params = {};
   try {
     if (e.postData && e.postData.contents) {
@@ -243,6 +243,13 @@ function handle_(e) {
   }
 
   var action = params.action;
+
+  // 只有 get 開頭的讀取類 action 允許用 GET 呼叫（例如健康檢查），其餘一律要求 POST，
+  // 避免有人直接開 GAS exec 網址（不是秘密，寫在公開前端 JS 裡）就能觸發寫入/刪除
+  if (method === 'GET' && !/^get/.test(action || '')) {
+    return respond_(err_('此操作僅允許透過 POST 呼叫: ' + action));
+  }
+
   var result;
   try {
     ensureSortOrderColumn_(SHEETS.CATALOG);
