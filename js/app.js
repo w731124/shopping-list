@@ -217,9 +217,9 @@
         escapeHtml(c.name) +
       '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
-      '<span>' +
-        '<button class="btn-solid-primary" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button> ' +
-        '<button class="btn-solid-neutral" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button> ' +
+      '<span class="item-actions">' +
+        '<button class="btn-solid-primary" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button>' +
+        '<button class="btn-solid-neutral" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button>' +
         '<button class="btn-solid-danger" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
       '</span>' +
     '</li>';
@@ -595,10 +595,17 @@
             '<button class="modal-close" data-action="close-modal">×</button>' +
           '</div>' +
           '<div class="segment">' +
-            '<button type="button" class="is-active" data-seg="catalog">從品項庫選擇</button>' +
-            '<button type="button" data-seg="oneoff">新增一次性項目</button>' +
+            '<button type="button" class="is-active" data-seg="oneoff">新增一次性項目</button>' +
+            '<button type="button" data-seg="catalog">從品項庫選擇</button>' +
           '</div>' +
-          '<div data-seg-panel="catalog">' +
+          '<div data-seg-panel="oneoff">' +
+            '<form class="inline-form" data-action="oneoff-form" data-category-id="' + categoryId + '">' +
+              '<input type="text" name="name" placeholder="項目名稱" required>' +
+              renderTagSelect() +
+              '<button class="btn-add" type="submit">加入</button>' +
+            '</form>' +
+          '</div>' +
+          '<div data-seg-panel="catalog" class="hidden">' +
             (catalogItems.length
               ? catalogItems.map(function (c) {
                   var tag = tagById(c.tag_id);
@@ -608,13 +615,6 @@
                   '</div>';
                 }).join('')
               : '<p class="empty-hint">此分類品項庫是空的，可切換到「新增一次性項目」</p>') +
-          '</div>' +
-          '<div data-seg-panel="oneoff" class="hidden">' +
-            '<form class="inline-form" data-action="oneoff-form" data-category-id="' + categoryId + '">' +
-              '<input type="text" name="name" placeholder="項目名稱" required>' +
-              renderTagSelect() +
-              '<button class="btn-add" type="submit">加入</button>' +
-            '</form>' +
           '</div>' +
         '</div>' +
       '</div>';

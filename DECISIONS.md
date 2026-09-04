@@ -1,6 +1,13 @@
 # 決策紀錄
 
-## 2026-09-04 拖曳排序（本次清單＋品項庫管理，限日常採購）
+## 2026-09-04（二）加入項目預設分頁改一次性項目 + 品項庫按鈕排版修正
+
+- **加入項目彈窗的分頁對調（`openAddTripModal` 日常採購分支）**：DOM 順序、`is-active`、`hidden` 三處一起換，`bindModalEvents` 的切換事件是靠 `data-seg`/`data-seg-panel` 屬性比對、不是靠 DOM 順序，所以完全不用動事件綁定邏輯，純粹是 render 出來的初始 HTML 不同。
+- **品項庫按鈕排版問題的根因是「三顆按鈕各自是 flex row 的獨立子項」**：原本包住三顆按鈕的 `<span>` 沒有自己的 flex context，空間不足時瀏覽器會把三顆按鈕當成三個獨立的可換行單位各自打散。修法是把這個 `<span>` 升級成 `class="item-actions"`、`display:flex; flex-wrap:nowrap`，讓它變成外層 `.catalog-item` 眼中「一個不可拆的區塊」，配合外層 `.catalog-item` 加上 `flex-wrap:wrap`，換行時只會整組 `.item-actions` 掉到下一行，不會拆散。
+- **按鈕縮小尺寸只用 `.catalog-item .btn-solid-*` 這種高特異性選擇器覆寫 `padding`/`font-size`/`min-height`**，沒有動 `.btn-solid-primary` 等基礎規則本身——因為本次清單「加入品項庫」按鈕（`promote-to-catalog`）共用同一組基礎 class，若直接改基礎規則會連帶把它也縮小，不符合「只有品項庫管理這裡變小」的需求。已用 Playwright 截圖＋量測按鈕高度確認：品項庫管理按鈕實際渲染高度 28px（改小了），本次清單的「加入品項庫」按鈕未受影響。
+- **已用 Playwright 對正式部署驗證**：彈窗預設顯示「新增一次性項目」分頁、切換分頁功能仍正常；品項庫管理一般短名稱項目維持單行、三顆按鈕同排；刻意新增一筆超長名稱＋長標籤的測試品項，確認換行時三顆按鈕整組掉到下一行且仍在同一列（不會各自打散），截圖確認視覺符合預期，測試完刪除該筆測試資料還原。這批純前端異動，不涉及 GAS，push 後 GitHub Pages 更新即可生效，不需要重新部署 GAS。
+
+## 2026-09-04（一）拖曳排序（本次清單＋品項庫管理，限日常採購）
 
 - **`sort_order` 欄位用「懶惰遷移」而非要求使用者手動加欄位**：新增 `ensureSortOrderColumn_(sheetName)`，在 `handle_()` 每次請求最前面對 Catalog／TripList 各呼叫一次——沒有 `sort_order` 表頭就補上該欄位，並依 `category_id` 分組、組內依既有的 `created_at`／`added_at`（缺欄位才退回列順序）算出初始序號寫回；已經有欄位時只讀表頭那一列就返回，成本可以忽略，所以直接放在每次請求最前面，不用另外寫一個「一次性遷移」的手動執行函式，也不會要求使用者自己去 Google Sheet 手動加欄位。
 - **`SCHEMA.Catalog`／`SCHEMA.TripList` 把 `sort_order` 放在陣列最後一個**：因為 `ensureSortOrderColumn_` 是用 `getLastColumn()+1` 在既有資料表最右邊新增欄位，必須讓 `SCHEMA` 常數裡的欄位順序跟實際新增後的物理欄位順序一致，`appendRow_`（新增列用）才不會寫錯欄位。
