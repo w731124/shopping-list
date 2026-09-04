@@ -92,7 +92,6 @@ body {
 
 .catalog-item .btn-ghost {
   min-height: 32px; display: inline-flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-sm);
 }
 
 /* 共用灰色圖示按鈕：加入/編輯/刪除三種情境（品項庫管理、本次清單、賣場管理）統一用這份規則 */
@@ -197,6 +196,12 @@ details.collapsible .catalog-list { margin-top: 8px; }
 }
 
 .inline-form { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+.trip-item .inline-form,
+.catalog-item .inline-form,
+.store-manage-item .inline-form {
+  flex: 1;
+}
 
 .section-header.catalog-header { flex-wrap: wrap; row-gap: 8px; }
 .section-header.catalog-header .catalog-inline-form { margin-top: 0; flex: 1 1 auto; justify-content: flex-end; }

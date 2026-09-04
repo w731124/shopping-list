@@ -1,5 +1,12 @@
 # 決策紀錄
 
+## 2026-09-05（二）編輯表單寬度 + 取消按鈕形狀修正
+
+- **`.inline-form` 在三種列容器下補 `flex: 1`**：根因是這三個容器都是 `display: flex`，編輯狀態下 `<form>` 是唯一子元素，沒有 `flex: 1` 就只會依內容算出剛好夠用的寬度、不會撐滿到容器右邊界。`.inline-form input[type="text"]` 本來就有 `flex: 1`，撐滿容器後輸入框自動吃掉多出的空間、往右延伸，不用額外調整輸入框或按鈕本身。已用 Playwright 在 768px 寬度量測確認：品項庫管理／本次清單編輯表單的「取消」按鈕右邊界跟表單右邊界完全對齊（676=676、672=672），賣場管理（無標籤下拉，欄位較少）在 390px 手機寬度下也對齊（362=362）。
+- **手機寬度（390px）下品項庫管理／本次清單的「取消」仍會換行到第二行、不會切齊右側**：因為這兩處編輯表單多了標籤下拉選單，`input+select+儲存` 三者已經用掉一整行空間，`.inline-form` 本來就有 `flex-wrap: wrap`（既有機制，這次沒有改動），空間不足時自然換行是預期行為，不是這次修正的迴歸——768px 寬度下已驗證四個元素能同一行對齊到底。
+- **`.catalog-item .btn-ghost` 拿掉 `border-radius: var(--radius-sm)` 覆寫**，只留 `min-height`／`inline-flex`／置中三個屬性，讓它自然繼承 `.btn-ghost` 基礎規則的圓角膠囊形狀，跟本次清單、賣場管理的取消按鈕視覺一致（已用 Playwright 截圖確認 `border-radius: 999px`）。
+- **純 CSS 異動，不涉及 GAS**，儲存/取消功能本身沒有改動任何 JS，非編輯狀態下的列表視覺也沒有受影響（截圖比對確認）。
+
 ## 2026-09-05 管理按鈕圖示化統一 + 本次清單／賣場管理新增編輯功能
 
 - **新增共用 `.btn-icon` class，直接取代 `.btn-solid-primary`／`.btn-solid-neutral`／`.btn-solid-danger` 三個 class**：這三個 class 換掉之後在全站已經沒有任何呼叫者（`.catalog-item` 三顆按鈕、`.store-manage-item` 刪除按鈕、`.trip-item` 刪除按鈕都改用 `.btn-icon`），連同 `.catalog-item .item-actions` 底下針對這三個 class 的 padding/font-size 覆寫規則、`.trip-item .btn-del` 規則（合併進 `.btn-icon`，`.trip-item` 的刪除按鈕 markup 直接改用 `.btn-icon`）一併刪除，沒有留下死代碼。
