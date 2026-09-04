@@ -20,6 +20,10 @@
     getCategories: function () { return callGas('getCategories'); },
     addCategory: function (name, type) { return callGas('addCategory', { name: name, type: type }); },
     toggleCategoryVisible: function (id) { return callGas('toggleCategoryVisible', { id: id }); },
+    reorderCategories: function (orderedCategoryIds) {
+      return callGas('reorderCategories', { orderedCategoryIds: orderedCategoryIds });
+    },
+    deleteCategory: function (categoryId) { return callGas('deleteCategory', { category_id: categoryId }); },
 
     getCatalog: function (categoryId) { return callGas('getCatalog', { category_id: categoryId }); },
     addCatalogItem: function (categoryId, name, tagId) {

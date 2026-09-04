@@ -105,6 +105,22 @@ function deleteRowByKey_(name, keyField, keyValue) {
   return false;
 }
 
+// 刪除所有符合條件的列（由下往上刪，避免刪除中途列號位移），回傳刪除筆數
+function deleteRowsByField_(name, field, value) {
+  var sheet = getSheet_(name);
+  var headers = SCHEMA[name];
+  var col = headers.indexOf(field);
+  var values = sheet.getDataRange().getValues();
+  var count = 0;
+  for (var r = values.length - 1; r >= 1; r--) {
+    if (String(values[r][col]) === String(value)) {
+      sheet.deleteRow(r + 1);
+      count++;
+    }
+  }
+  return count;
+}
+
 function ok_(data) {
   return { success: true, data: data };
 }
@@ -235,6 +251,8 @@ function handle_(e) {
       case 'getCategories': result = ok_(sheetToObjects_(SHEETS.CATEGORIES)); break;
       case 'addCategory': result = ok_(addCategory_(params)); break;
       case 'toggleCategoryVisible': result = ok_(toggleCategoryVisible_(params)); break;
+      case 'reorderCategories': result = ok_(reorderCategories_(params)); break;
+      case 'deleteCategory': result = ok_(deleteCategory_(params)); break;
 
       case 'getCatalog': result = ok_(getCatalog_(params)); break;
       case 'addCatalogItem': result = ok_(addCatalogItem_(params)); break;
@@ -287,6 +305,53 @@ function toggleCategoryVisible_(p) {
   var next = !target.visible;
   updateRowByKey_(SHEETS.CATEGORIES, 'id', p.id, { visible: next });
   return { id: p.id, visible: next };
+}
+
+// 拖曳排序賣場卡片：只動陣列裡包含的（目前顯示中的）賣場，隱藏中的賣場 sort_order 不動
+function reorderCategories_(p) {
+  var orderedIds = p.orderedCategoryIds || [];
+  var sheet = getSheet_(SHEETS.CATEGORIES);
+  var headers = SCHEMA.Categories;
+  var idCol = headers.indexOf('id');
+  var typeCol = headers.indexOf('type');
+  var sortCol = headers.indexOf('sort_order');
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  var values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var idToRowIndex = {};
+  values.forEach(function (row, r) { idToRowIndex[String(row[idCol])] = r; });
+
+  var touchedIndexes = orderedIds.map(function (id) {
+    var rowIndex = idToRowIndex[String(id)];
+    if (rowIndex === undefined) throw '找不到分類: ' + id;
+    if (String(values[rowIndex][typeCol]) !== 'store') throw '只能對賣場分類排序: ' + id;
+    return rowIndex;
+  });
+
+  touchedIndexes.forEach(function (rowIndex, i) { values[rowIndex][sortCol] = i + 1; });
+
+  var sortColValues = values.map(function (row) { return [row[sortCol]]; });
+  sheet.getRange(2, sortCol + 1, lastRow - 1, 1).setValues(sortColValues);
+
+  return touchedIndexes.map(function (rowIndex) {
+    var obj = {};
+    headers.forEach(function (h, c) { obj[h] = values[rowIndex][c]; });
+    return obj;
+  });
+}
+
+// 刪除賣場：只能刪 type === 'store'，連動刪除底下的 TripList 與 Catalog 殘留資料
+function deleteCategory_(p) {
+  var rows = sheetToObjects_(SHEETS.CATEGORIES);
+  var target = rows.filter(function (r) { return String(r.id) === String(p.category_id); })[0];
+  if (!target) throw '找不到分類: ' + p.category_id;
+  if (target.type !== 'store') throw '不能刪除日常採購分類';
+
+  deleteRowByKey_(SHEETS.CATEGORIES, 'id', p.category_id);
+  var removedTripCount = deleteRowsByField_(SHEETS.TRIPLIST, 'category_id', p.category_id);
+  var removedCatalogCount = deleteRowsByField_(SHEETS.CATALOG, 'category_id', p.category_id);
+  return { category_id: p.category_id, removedTripCount: removedTripCount, removedCatalogCount: removedCatalogCount };
 }
 
 // ---------- Catalog ----------

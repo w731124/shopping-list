@@ -157,9 +157,11 @@ body {
 
 .empty-hint { color: var(--text-muted); font-size: 0.9rem; padding: 12px 4px; text-align: center; }
 
-/* 拖曳排序：本次清單日常/賣場皆套用，品項庫管理僅日常採購有；標記 data-sortable="true" 的容器套用長按/選取抑制 */
+/* 拖曳排序：本次清單日常/賣場皆套用，品項庫管理僅日常採購有；標記 data-sortable="true" 的容器套用長按/選取抑制。
+   賣場卡片（.store-block）本身也可拖曳，直接列進選擇器，不用靠 data-sortable 祖先關係 */
 [data-sortable="true"] .trip-item,
-[data-sortable="true"] .catalog-item {
+[data-sortable="true"] .catalog-item,
+.store-block {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;

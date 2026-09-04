@@ -1,5 +1,19 @@
 # 決策紀錄
 
+## 2026-09-04（五）賣場卡片拖曳排序 + 刪除賣場功能
+
+- **`reorderCategories_` 沒有重用 `reorderItems_`，是獨立寫的函式**：`reorderItems_` 的範圍界線是「同一個 `category_id`」，但 Categories 表本身沒有 `category_id` 欄位可以拿來當分組依據，這次的範圍界線改成「`type === 'store'`」，驗證邏輯不同，硬套同一個函式反而要多加參數判斷情境，直接寫一個結構相同、驗證條件不同的獨立函式更清楚。**隱藏中的賣場完全不在這次重算範圍內**，`sort_order` 維持原值不動，跟 `reorderItems_` 一樣「只動陣列裡包含的、其餘列不動」，這是需求文件裡明講的已知邊界情況（隱藏賣場之後重新顯示不保證跟可見賣場完美交錯），不特別處理。
+- **`deleteCategory_` 新增了 `deleteRowsByField_` 這個共用工具**：既有的 `deleteRowByKey_` 只刪第一筆符合的列就返回（設計成給唯一鍵用），但刪除賣場要「連動刪除所有屬於這個 `category_id` 的 TripList／Catalog 資料列」，符合條件的可能有好幾筆。新函式由下往上掃描刪除，避免刪除中途列號位移導致漏刪，回傳實際刪除筆數。
+- **`type === 'daily'` 檔在後端跟前端都擋**：後端 `deleteCategory_` 找到目標分類後第一件事就是檢查 `type !== 'store'` 直接丟例外，不執行任何刪除；前端 `deleteCategory()` 一開始也檢查 `cat.type !== 'store'` 才繼續，雙重保險。
+- **`reorderStateArray` 從「比對 `category_id`」改成「比對 id 是否在 `orderedIds` 集合裡」，讓 trip/catalog 品項排序跟賣場卡片排序可以共用同一個函式**：因為 `orderedIds` 本來就是從被拖曳的那個容器目前的子元素蒐集出來的，容器裡本來就只會有同一個分類（或同一組可見賣場）的項目，兩種判斷方式在既有使用情境下是等價的，用 id 集合判斷更直接、不用額外傳 `categoryId` 參數，也讓這次新增的賣場卡片排序（沒有 `category_id` 概念、只有全域唯一的分類 `id`）可以直接套用同一套邏輯，不用另外寫一份。
+- **卡片容器初始化 Sortable 時，`filter` 額外排除 `.trip-list`**：`#store-cards-list` 包住所有 `.store-block`，每個 `.store-block` 內部的 `.trip-list` 又各自是獨立的 Sortable（品項排序），這是巢狀 Sortable，如果不處理，在 `.trip-list` 裡按住品項準備長按拖曳時，pointerdown 事件會同時被外層（卡片）跟內層（品項）兩個 Sortable 監聽到，導致兩層同時嘗試觸發拖曳、互相搶手勢。解法是外層 Sortable 的 `filter` 選項加上 `, .trip-list`，讓「起點在 `.trip-list` 內」的拖曳直接被外層忽略（`closest()` 比對），品項的拖曳交給內層 Sortable 自己處理；也就是說使用者要拖動整張賣場卡片，必須從卡片標題列／空白處按住，不能從品項清單裡面拖，這樣的手勢區隔本來就符合「拖曳賣場卡片不會誤觸賣場內部品項的拖曳」這條驗收標準。已用 Playwright 單獨隔離測試確認：在第一張卡片（Costco）內拖曳品項，卡片本身的順序完全沒有被影響。
+- **CSS `-webkit-touch-callout`/`user-select` 抑制規則，把 `.store-block` 直接列進選擇器**（不是只靠 `data-sortable="true"` 祖先關係套用），因為現在卡片本身也是可拖曳的對象，需要卡片這一層自己就有這個屬性，不能只靠「卡片內的品項」被保護到。
+- **已用 Playwright 對正式部署驗證**（GAS 尚未重新部署前）：`#store-cards-list` 正確初始化 Sortable 實例；拖曳 Costco 卡片到 IKEA 後面，畫面先樂觀重排，因為後端還沒有 `reorderCategories` action 而失敗，約數秒後跳出「賣場排序更新失敗，已還原順序」並正確復原（第一次用 1.5 秒的等待時間誤判成功，是網路延遲比預期久，改用輪詢等待後確認回滾邏輯正確）；巢狀拖曳互相獨立（如上）；賣場管理清單裡每個賣場都有刪除按鈕、點擊會跳原生 confirm、確認後樂觀移除，因後端還沒有 `deleteCategory` action 而失敗回滾（測試時新增的兩筆「PW測試賣場」因此刪不掉，已用既有的顯示/隱藏切換把它們關掉避免佔用賣場分頁版面，**麻煩使用者部署完 GAS 後，用新的刪除按鈕把這兩筆清掉**）。過程中本次清單品項排序（既有動作）都正常運作、有真的寫回 Sheet，測試完都已把品項順序拖曳還原。
+
+## GAS 後端需要重新部署
+
+`gas/Code.gs` 這次新增了 `reorderCategories`、`deleteCategory` 兩個 action。**這一步一定要回瀏覽器操作**：Apps Script 編輯器貼上新版 `gas/Code.gs` 全部內容 → Deploy > Manage deployments，對現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）按編輯（鉛筆圖示）→ New version → Deploy，**不要建立新的部署**。部署完成前，賣場卡片拖曳跟刪除賣場都會先讓畫面樂觀更新，然後因為後端還沒有這兩個新 action 而失敗回滾、跳對應的失敗 toast（這是本批已經用 Playwright 驗證過的既有行為）。**部署完成後，記得用新的刪除按鈕清掉測試留下的兩筆「PW測試賣場」**（目前已設定為隱藏，賣場分頁看不到，但「賣場管理」清單裡還在）。
+
 ## 2026-09-04（四）標籤色點顯示修正 + 大賣場本次清單拖曳排序
 
 - **色點消失的根因是雙重的**：`.trip-item .tag-dot` 把尺寸規則限定在情境裡，品項庫管理清單／標籤設定 Modal 都套不到；且 `<span>` 預設 `display: inline`，非替換元素在 `inline` 狀態下瀏覽器本來就會忽略 `width`/`height`。改成不限定情境的通用規則 `.tag-dot { display: inline-block; width: 9px; height: 9px; ... }`，兩個成因一次解決，三個使用色點的地方（本次清單、品項庫管理、標籤設定 Modal）都正常顯示。

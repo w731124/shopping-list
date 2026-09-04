@@ -132,11 +132,11 @@
     var stores = state.categories.filter(function (c) { return c.type === 'store'; });
     var visibleStores = stores.filter(function (c) { return c.visible === true || c.visible === 'TRUE'; });
 
-    var html = '';
+    var storeCardsHtml = '';
     visibleStores.forEach(function (store) {
       var items = state.tripList.filter(function (t) { return String(t.category_id) === String(store.id); });
       var accentColor = STORE_ACCENT_COLORS[store.name] || 'var(--border)';
-      html +=
+      storeCardsHtml +=
         '<div class="section store-block" data-category-id="' + store.id + '" data-sortable="true" style="border-left: 5px solid ' + accentColor + ';">' +
           '<div class="section-header">' +
             '<h2 class="section-title">' + escapeHtml(store.name) + '</h2>' +
@@ -145,6 +145,8 @@
           renderTripList(items) +
         '</div>';
     });
+
+    var html = '<div id="store-cards-list" data-sortable="true">' + storeCardsHtml + '</div>';
 
     html +=
       '<details class="collapsible section">' +
@@ -158,6 +160,7 @@
                 '<input type="checkbox" data-action="toggle-store-visible" data-category-id="' + s.id + '" ' + (isVisible ? 'checked' : '') + '>' +
                 '<span class="slider"></span>' +
               '</label>' +
+              '<button class="btn-solid-danger" data-action="delete-category" data-category-id="' + s.id + '">刪除</button>' +
             '</li>';
           }).join('') +
         '</ul>' +
@@ -173,6 +176,7 @@
       var section = panel.querySelector('.store-block[data-category-id="' + store.id + '"]');
       if (section) initTripListSortable(section.querySelector('.trip-list'), store.id);
     });
+    initStoreCardsSortable(document.getElementById('store-cards-list'));
   }
 
   function renderTripList(items) {
@@ -270,6 +274,19 @@
     }
   }
 
+  // 賣場卡片本身的拖曳排序（container 包住所有目前顯示中的 .store-block）
+  // filter 額外排除 .trip-list：card 內部的品項清單有自己的 Sortable，避免兩層巢狀拖曳互相搶手勢
+  function initStoreCardsSortable(containerEl) {
+    if (!containerEl) return;
+    new Sortable(containerEl, Object.assign({}, SORTABLE_OPTS, {
+      filter: SORTABLE_OPTS.filter + ', .trip-list',
+      onEnd: function (evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        handleCategoryReorder(containerEl);
+      }
+    }));
+  }
+
   // kind: 'trip' | 'catalog'；datasetKey 是 <li> 上對應的 dataset 名稱（tripId / itemId）
   function handleReorder(kind, categoryId, listEl, datasetKey) {
     var isTrip = kind === 'trip';
@@ -278,7 +295,7 @@
     var orderedIds = Array.prototype.map.call(listEl.children, function (li) { return li.dataset[datasetKey]; });
 
     var previousOrder = stateArr.slice();
-    reorderStateArray(stateArr, idField, categoryId, orderedIds);
+    reorderStateArray(stateArr, idField, orderedIds);
     renderAll();
 
     var apiCall = isTrip ? Api.reorderTripItems(categoryId, orderedIds) : Api.reorderCatalogItems(categoryId, orderedIds);
@@ -289,14 +306,30 @@
     });
   }
 
-  // 依 orderedIds 重排 arr 中屬於 categoryId 的項目，其餘分類的項目位置與相對順序不變
-  function reorderStateArray(arr, idField, categoryId, orderedIds) {
+  function handleCategoryReorder(containerEl) {
+    var orderedIds = Array.prototype.map.call(containerEl.children, function (el) { return el.dataset.categoryId; });
+    var previousOrder = state.categories.slice();
+    reorderStateArray(state.categories, 'id', orderedIds);
+    renderAll();
+
+    Api.reorderCategories(orderedIds).catch(function () {
+      state.categories = previousOrder;
+      renderAll();
+      showToast('賣場排序更新失敗，已還原順序');
+    });
+  }
+
+  // 依 orderedIds 重排 arr 中 id 落在這個集合裡的項目，其餘項目位置與相對順序不變
+  // （orderedIds 只會是同一個分類/同一組可見賣場，靠 id 是否在集合裡就能精準對應，不用另外比對 category_id）
+  function reorderStateArray(arr, idField, orderedIds) {
     var byId = {};
     arr.forEach(function (item) { byId[String(item[idField])] = item; });
     var orderedItems = orderedIds.map(function (id) { return byId[String(id)]; }).filter(Boolean);
+    var idSet = {};
+    orderedIds.forEach(function (id) { idSet[String(id)] = true; });
     var cursor = 0;
     for (var i = 0; i < arr.length; i++) {
-      if (String(arr[i].category_id) === String(categoryId)) {
+      if (idSet[String(arr[i][idField])]) {
         arr[i] = orderedItems[cursor++];
       }
     }
@@ -329,6 +362,8 @@
     } else if ((t = e.target.closest('[data-action="cancel-edit-catalog"]'))) {
       state.editingCatalogItemId = null;
       renderAll();
+    } else if ((t = e.target.closest('[data-action="delete-category"]'))) {
+      deleteCategory(t.dataset.categoryId);
     }
   }
 
@@ -564,6 +599,26 @@
       cat.visible = was;
       renderAll();
       showToast('更新賣場顯示狀態失敗');
+    });
+  }
+
+  // 只能刪除賣場（type === 'store'），連動刪除該賣場底下的本次清單項目
+  function deleteCategory(categoryId) {
+    var cat = categoryById(categoryId);
+    if (!cat || cat.type !== 'store') return;
+    if (!window.confirm('確定要刪除賣場「' + cat.name + '」嗎？這個賣場底下的本次清單項目也會一併刪除，無法復原。')) return;
+
+    var idx = state.categories.indexOf(cat);
+    var removedTripItems = state.tripList.filter(function (t) { return String(t.category_id) === String(categoryId); });
+    state.categories.splice(idx, 1);
+    state.tripList = state.tripList.filter(function (t) { return String(t.category_id) !== String(categoryId); });
+    renderAll();
+
+    Api.deleteCategory(categoryId).catch(function () {
+      state.categories.splice(idx, 0, cat);
+      state.tripList = state.tripList.concat(removedTripItems);
+      renderAll();
+      showToast('刪除賣場失敗，請重試');
     });
   }
 
