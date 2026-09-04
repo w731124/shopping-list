@@ -1,5 +1,12 @@
 # 決策紀錄
 
+## 2026-09-05（三）本次清單視覺統一為品項庫風格 + 編輯表單手機版換行優化
+
+- **`.trip-item` 拿掉圓角/列間距/預設灰底的卡片感，改用跟 `.catalog-item` 一致的細分隔線清單**：`border-radius`／`margin-bottom`／預設 `background: var(--tag-gray-tint)` 都拿掉，改成 `border-bottom: 1px solid var(--border)`（`:last-child` 拿掉分隔線），字級從 0.98rem 降到 0.92rem 對齊 `.catalog-item`。標籤底色（`.tag-red` 等 class）完全沒動，因為這套規則本來就跟 `.catalog-item` 共用，換了「卡片 vs 分隔線」骨架後底色機制照樣正常運作——已用 Playwright 截圖＋computed style 比對確認：無標籤的 `.trip-item` 背景是透明、跟 `.catalog-item` 的 border-bottom／padding／字級數值完全一致；有標籤的 `.trip-item` 底色 tint 依然正確顯示。
+- **`renderTripItemRow` 三顆圖示按鈕包進 `<span class="item-actions">`**，直接沿用 `.catalog-item .item-actions` 現有的間距數值（`gap: 6px`），新增 `.trip-item .item-actions` 規則對齊；賣場品項因為共用同一個渲染函式，一併套用、不用額外改動。
+- **三處編輯表單（本次清單／品項庫管理／賣場管理）新增 `<span class="inline-form-actions">` 把「標籤下拉＋儲存＋取消」（賣場管理沒有標籤下拉，只有「儲存＋取消」）包成一組**：`.inline-form-actions { display:flex; gap:6px; flex-shrink:0; flex-wrap:nowrap }` 讓瀏覽器只能整組一起換行、不能把「取消」單獨拆到下一行。已用 Playwright 分別在 390px（手機）跟 768px（平板）驗證：手機寬度下品項庫/本次清單正確呈現「第一行：名稱輸入框撐滿寬度；第二行：標籤下拉＋儲存＋取消同一行」，賣場管理（欄位少）在手機寬度下四元素還是同一行；768px 寬度下三處編輯表單都維持全部同一行，跟修改前效果一致。
+- **這次改動純視覺**，`Sortable.get()` 在本次清單/品項庫容器上仍回傳有效實例，checkbox 打勾/取消勾功能實測正常（優化更新有真的呼叫 API 並在畫面上切換），不涉及 GAS，也沒有改動任何事件綁定或資料流邏輯。
+
 ## 2026-09-05（二）編輯表單寬度 + 取消按鈕形狀修正
 
 - **`.inline-form` 在三種列容器下補 `flex: 1`**：根因是這三個容器都是 `display: flex`，編輯狀態下 `<form>` 是唯一子元素，沒有 `flex: 1` 就只會依內容算出剛好夠用的寬度、不會撐滿到容器右邊界。`.inline-form input[type="text"]` 本來就有 `flex: 1`，撐滿容器後輸入框自動吃掉多出的空間、往右延伸，不用額外調整輸入框或按鈕本身。已用 Playwright 在 768px 寬度量測確認：品項庫管理／本次清單編輯表單的「取消」按鈕右邊界跟表單右邊界完全對齊（676=676、672=672），賣場管理（無標籤下拉，欄位較少）在 390px 手機寬度下也對齊（362=362）。

@@ -104,16 +104,18 @@ body {
 .trip-list, .catalog-list, .tag-manage-list, .store-manage-list { list-style: none; margin: 0; padding: 0; }
 
 .trip-item {
-  display: flex; align-items: center; gap: 10px; padding: 10px 8px;
-  border-radius: var(--radius-sm); margin-bottom: 6px; background: var(--tag-gray-tint);
+  display: flex; align-items: center; gap: 8px; padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
   transition: opacity .15s ease;
 }
+.trip-item:last-child { border-bottom: none; }
 .trip-item.is-pending { opacity: 0.55; }
 .trip-item .chk {
   width: 22px; height: 22px; flex-shrink: 0; accent-color: var(--primary);
 }
-.trip-item .name { flex: 1; font-size: 0.98rem; word-break: break-word; }
+.trip-item .name { flex: 1; font-size: 0.92rem; word-break: break-word; }
 .trip-item.is-checked .name { color: var(--text-muted); text-decoration: line-through; }
+.trip-item .item-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .tag-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
 .tag-badge {
@@ -201,6 +203,10 @@ details.collapsible .catalog-list { margin-top: 8px; }
 .catalog-item .inline-form,
 .store-manage-item .inline-form {
   flex: 1;
+}
+
+.inline-form-actions {
+  display: flex; gap: 6px; flex-shrink: 0; flex-wrap: nowrap;
 }
 
 .section-header.catalog-header { flex-wrap: wrap; row-gap: 8px; }

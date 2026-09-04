@@ -165,8 +165,10 @@
               return '<li class="store-manage-item">' +
                 '<form class="inline-form" data-action="edit-category-form" data-category-id="' + s.id + '">' +
                   '<input type="text" name="name" value="' + escapeHtml(s.name) + '" required>' +
-                  '<button class="btn-add" type="submit">儲存</button>' +
-                  '<button class="btn-ghost" type="button" data-action="cancel-edit-category">取消</button>' +
+                  '<span class="inline-form-actions">' +
+                    '<button class="btn-add" type="submit">儲存</button>' +
+                    '<button class="btn-ghost" type="button" data-action="cancel-edit-category">取消</button>' +
+                  '</span>' +
                 '</form>' +
               '</li>';
             }
@@ -218,9 +220,11 @@
       return '<li class="trip-item" data-trip-id="' + item.trip_id + '">' +
         '<form class="inline-form" data-action="edit-trip-form" data-trip-id="' + item.trip_id + '">' +
           '<input type="text" name="name" value="' + escapeHtml(item.name) + '" required>' +
-          renderTagSelect(item.tag_id) +
-          '<button class="btn-add" type="submit">儲存</button>' +
-          '<button class="btn-ghost" type="button" data-action="cancel-edit-trip">取消</button>' +
+          '<span class="inline-form-actions">' +
+            renderTagSelect(item.tag_id) +
+            '<button class="btn-add" type="submit">儲存</button>' +
+            '<button class="btn-ghost" type="button" data-action="cancel-edit-trip">取消</button>' +
+          '</span>' +
         '</form>' +
       '</li>';
     }
@@ -235,9 +239,11 @@
       (tag ? '<span class="tag-dot ' + dotClass + '"></span>' : '') +
       '<span class="name">' + escapeHtml(item.name) + '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
-      (showPromote ? '<button class="btn-icon" data-action="promote-to-catalog" data-trip-id="' + item.trip_id + '">＋</button>' : '') +
-      '<button class="btn-icon" data-action="start-edit-trip" data-trip-id="' + item.trip_id + '">✎</button>' +
-      '<button class="btn-icon" data-action="delete-trip" data-trip-id="' + item.trip_id + '">✕</button>' +
+      '<span class="item-actions">' +
+        (showPromote ? '<button class="btn-icon" data-action="promote-to-catalog" data-trip-id="' + item.trip_id + '">＋</button>' : '') +
+        '<button class="btn-icon" data-action="start-edit-trip" data-trip-id="' + item.trip_id + '">✎</button>' +
+        '<button class="btn-icon" data-action="delete-trip" data-trip-id="' + item.trip_id + '">✕</button>' +
+      '</span>' +
     '</li>';
   }
 
@@ -251,9 +257,11 @@
       return '<li class="catalog-item" data-item-id="' + c.item_id + '">' +
         '<form class="inline-form" data-action="edit-catalog-form" data-item-id="' + c.item_id + '">' +
           '<input type="text" name="name" value="' + escapeHtml(c.name) + '" required>' +
-          renderTagSelect(c.tag_id) +
-          '<button class="btn-add" type="submit">儲存</button>' +
-          '<button class="btn-ghost" type="button" data-action="cancel-edit-catalog">取消</button>' +
+          '<span class="inline-form-actions">' +
+            renderTagSelect(c.tag_id) +
+            '<button class="btn-add" type="submit">儲存</button>' +
+            '<button class="btn-ghost" type="button" data-action="cancel-edit-catalog">取消</button>' +
+          '</span>' +
         '</form>' +
       '</li>';
     }
