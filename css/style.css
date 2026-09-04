@@ -183,7 +183,7 @@ details.collapsible .catalog-list { margin-top: 8px; }
 }
 .catalog-item:last-child, .store-manage-item:last-child, .tag-manage-item:last-child { border-bottom: none; }
 .catalog-item .name-wrap, .store-manage-item .name-wrap { display: flex; align-items: center; gap: 8px; }
-.catalog-item .name-wrap { flex: 1; min-width: 0; }
+.catalog-item .name-wrap { flex: 1; min-width: 7em; }
 
 .catalog-item .item-actions {
   display: flex; gap: 6px; flex-shrink: 0; flex-wrap: nowrap;
