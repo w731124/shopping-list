@@ -1,5 +1,25 @@
 # 決策紀錄
 
+## 2026-09-04 拖曳排序（本次清單＋品項庫管理，限日常採購）
+
+- **`sort_order` 欄位用「懶惰遷移」而非要求使用者手動加欄位**：新增 `ensureSortOrderColumn_(sheetName)`，在 `handle_()` 每次請求最前面對 Catalog／TripList 各呼叫一次——沒有 `sort_order` 表頭就補上該欄位，並依 `category_id` 分組、組內依既有的 `created_at`／`added_at`（缺欄位才退回列順序）算出初始序號寫回；已經有欄位時只讀表頭那一列就返回，成本可以忽略，所以直接放在每次請求最前面，不用另外寫一個「一次性遷移」的手動執行函式，也不會要求使用者自己去 Google Sheet 手動加欄位。
+- **`SCHEMA.Catalog`／`SCHEMA.TripList` 把 `sort_order` 放在陣列最後一個**：因為 `ensureSortOrderColumn_` 是用 `getLastColumn()+1` 在既有資料表最右邊新增欄位，必須讓 `SCHEMA` 常數裡的欄位順序跟實際新增後的物理欄位順序一致，`appendRow_`（新增列用）才不會寫錯欄位。
+- **`getCatalog_`／`getTripList_` 排序邏輯是「先比 `category_id`、再比 `sort_order`」而不是單純對整個表按 `sort_order` 排序**：雖然前端本來就會用 `category_id` 過濾出各分類清單，理論上只要同分類內順序正確、分類間怎麼交錯都不影響顯示結果，但直接按規格寫「先分組再組內排序」語意更明確、也不用假設不同分類的 `sort_order` 數值不會恰好相同。
+- **`reorderCatalogItems`／`reorderTripItems` 用同一個共用函式 `reorderItems_`**：內部先一次讀出整個表的資料範圍（含 `category_id` 用於安全驗證），確認 `orderedItemIds` 裡每個 id 都存在且屬於傳入的 `category_id`（有任何一筆不符合就整個丟例外，不會部分寫入），然後**只覆寫 `sort_order` 這一欄**（用單一次 `Range.setValues()`），其餘欄位或其他分類的列完全不動、也不會被重新排序，符合「不要重算全表」的要求。
+- **需求文件裡「`reorderTripItems` 要多限制在同一個 `trip_id` 內生效」這條沒有照字面實作**：因為專案既有的資料模型（見前面「2026-09-02 初版架構」那條）明講 `trip_id` 只是 TripList 這張表自己的主鍵、不是「梯次」分組欄位，本次清單本身沒有「梯次」概念，所以 TripList 沒有任何比 `category_id` 更小的分組單位可以限制。判斷這是需求文件對資料模型的誤解，`reorderTripItems_` 因此跟 `reorderCatalogItems_` 一樣只用 `category_id` 當範圍界線，這也是目前資料模型下唯一合理的分組依據。
+- **拖曳套件用 SortableJS（CDN：`cdn.jsdelivr.net/npm/sortablejs@1.15.2`）**，只在 `renderDailyPanel()` 建完 DOM 後呼叫 `initDailySortable()`，鎖定 `#panel-daily` 底下的 `.trip-list`／`.catalog-list` 各自 new 一個 `Sortable` 實例；`renderStorePanel()` 完全沒有呼叫這個初始化，賣場卡片的清單容器沒有掛 `Sortable`，長按不會有任何拖曳反應，直接用「賣場分頁完全不初始化」達成範圍限制，沒有另外寫開關判斷。
+- **每次 `renderAll()` 都是整個 `innerHTML` 重繪**，舊的 `Sortable` 實例會隨著舊 DOM 節點一起被捨棄，不需要額外呼叫 `.destroy()`；`initDailySortable()` 在每次 `renderDailyPanel()` 之後都會重新對新的 `<ul>` 建立新實例，維持專案原本「整包重繪」的既有模式，沒有為了拖曳另外改成局部更新 DOM。
+- **長按判斷用 `delay: 300` + `delayOnTouchOnly: true` + `touchStartThreshold: 5`**：只有觸控輸入需要長按 300ms 才觸發拖曳，滑鼠（桌機測試／簡報）維持立即拖曳；`filter: 'input, select, button, a'` + `preventOnFilter: false` 讓 checkbox／按鈕／表單控制項本身不會被判定成拖曳起點，短按 checkbox 的原生 click/change 行為不受影響——已用 Playwright 模擬拖曳跟點擊 checkbox 分別驗證過，checkbox 單擊仍正常切換。
+- **API 呼叫時機是「放開就打，不等使用者做完全部調整」**：`onEnd` 一觸發就呼叫 `handleReorder()`，內部直接送出 `reorderTripItems`／`reorderCatalogItems`；跟專案既有的樂觀更新模式一致——先在 `state.tripList`／`state.catalog` 陣列裡把該分類底下的項目依放開後的 DOM 順序重新排列（`reorderStateArray()`，只動同分類項目，其他分類項目的陣列位置不受影響）、立刻 `renderAll()`，失敗才把整個陣列還原成拖曳前的快照並跳 toast「排序更新失敗，已還原順序」。
+- **`iOS Safari` 長按選單抑制**：CSS 新增 `[data-sortable="true"] .trip-item / .catalog-item { -webkit-touch-callout: none; user-select: none; }`，只加在日常採購兩個 `.section`（各自標了 `data-sortable="true"`），賣場的 `.section` 沒有這個屬性，不影響賣場清單原本的文字選取行為。沒有實機 iOS 測試環境，這條純靠程式碼審視＋官方建議寫法完成，麻煩使用者實際用 iPhone 開 PWA 長按確認一次系統選單不會跳出。
+- **已用 Playwright 對正式部署（GAS 尚未重新部署前）驗證**：日常採購「本次清單」與「品項庫管理」兩個清單長按拖曳後，DOM 會先樂觀重排、接著因為後端還沒有 `reorderTripItems`／`reorderCatalogItems` 這兩個 action 而 API 失敗，前端正確把順序還原回拖曳前並跳出「排序更新失敗，已還原順序」的 toast；大賣場分頁的清單容器確認沒有掛上 `Sortable` 實例；checkbox 單擊功能不受拖曳邏輯影響；過程中瀏覽器 console 沒有任何錯誤。**排序真正寫回 Google Sheet、新項目 `sort_order` 接到分類最後面、Catalog 排序不影響既有 TripList 這幾點，需要等 GAS 重新部署後才能實測，這批只驗證了前端邏輯與失敗回滾路徑。**
+
+## GAS 後端需要重新部署
+
+`gas/Code.gs` 這次新增了 `sort_order` 相關的欄位遷移邏輯，以及 `reorderCatalogItems`／`reorderTripItems` 兩個新 action，`getCatalog`／`getTripList`／`addCatalogItem`／`addTripItem` 也都有異動。**這一步一定要回瀏覽器操作**：Apps Script 編輯器貼上新版 `gas/Code.gs` 全部內容 → Deploy > Manage deployments，對現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）按編輯（鉛筆圖示）→ New version → Deploy，**不要建立新的部署**，這樣 `js/config.js` 裡的網址才不用跟著換。
+
+部署完成後建議手動確認：Google Sheet 的 Catalog／TripList 兩張表最右邊多了一欄 `sort_order`，且既有資料列都補上了數字（不是空的）——第一次觸發任何 API 請求（例如打開網頁）時就會自動完成這個遷移，之後每次請求只是快速檢查一下表頭，不會重複遷移。部署完成前，拖曳放開後會先讓畫面樂觀重排，然後因為後端還沒有這兩個新 action 而失敗回滾、跳「排序更新失敗，已還原順序」的 toast（這是本批已經用 Playwright 驗證過的既有行為，不是 bug）。
+
 ## 2026-09-03（九）大賣場採購移除品項庫 + 賣場卡片識別色
 
 - **「+ 加入項目」彈窗也一併處理**：需求裡明講賣場新增品項要「統一回歸一次性項目」，所以除了拿掉賣場卡片裡的「品項庫管理」區塊，`openAddTripModal` 依 `category.type` 分流——賣場分類直接跳只有一個輸入框的表單，不再顯示「從品項庫選擇／新增一次性項目」的切換分頁；日常採購維持原本兩種都有的行為不變。

@@ -103,14 +103,14 @@
     var catalogItems = state.catalog.filter(function (c) { return String(c.category_id) === String(dailyCat.id); });
 
     panel.innerHTML =
-      '<div class="section" data-category-id="' + dailyCat.id + '">' +
+      '<div class="section" data-category-id="' + dailyCat.id + '" data-sortable="true">' +
         '<div class="section-header">' +
           '<h2 class="section-title">本次清單</h2>' +
           '<button class="btn-add" data-action="open-add-trip" data-category-id="' + dailyCat.id + '">+ 加入項目</button>' +
         '</div>' +
         renderTripList(items) +
       '</div>' +
-      '<div class="section" data-category-id="' + dailyCat.id + '">' +
+      '<div class="section" data-category-id="' + dailyCat.id + '" data-sortable="true">' +
         '<div class="section-header catalog-header">' +
           '<h2 class="section-title">品項庫管理</h2>' +
           '<form class="inline-form catalog-inline-form" data-action="add-catalog-form" data-category-id="' + dailyCat.id + '">' +
@@ -123,6 +123,7 @@
       '</div>';
 
     bindSectionEvents(panel);
+    initDailySortable(panel, dailyCat.id);
   }
 
   // ---------- 大賣場採購 ----------
@@ -199,7 +200,7 @@
 
   function renderCatalogRow(c) {
     if (state.editingCatalogItemId === c.item_id) {
-      return '<li class="catalog-item">' +
+      return '<li class="catalog-item" data-item-id="' + c.item_id + '">' +
         '<form class="inline-form" data-action="edit-catalog-form" data-item-id="' + c.item_id + '">' +
           '<input type="text" name="name" value="' + escapeHtml(c.name) + '" required>' +
           renderTagSelect(c.tag_id) +
@@ -210,7 +211,7 @@
     }
     var tag = tagById(c.tag_id);
     var tagClass = tag ? 'tag-' + tag.color_key : '';
-    return '<li class="catalog-item ' + tagClass + '">' +
+    return '<li class="catalog-item ' + tagClass + '" data-item-id="' + c.item_id + '">' +
       '<span class="name-wrap">' +
         (tag ? '<span class="tag-dot dot-' + tag.color_key + '"></span>' : '') +
         escapeHtml(c.name) +
@@ -229,6 +230,70 @@
       return '<option value="' + t.tag_id + '"' + (String(t.tag_id) === String(selectedId) ? ' selected' : '') + '>' + escapeHtml(t.name) + '</option>';
     }).join('');
     return '<select name="tag_id">' + opts + '</select>';
+  }
+
+  // ---------- 拖曳排序（僅限日常採購分類，賣場不套用） ----------
+  function initDailySortable(panel, categoryId) {
+    var sortableOpts = {
+      animation: 150,
+      delay: 300,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 5,
+      filter: 'input, select, button, a',
+      preventOnFilter: false
+    };
+
+    var tripListEl = panel.querySelector('.trip-list');
+    if (tripListEl) {
+      new Sortable(tripListEl, Object.assign({}, sortableOpts, {
+        onEnd: function (evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          handleReorder('trip', categoryId, tripListEl, 'tripId');
+        }
+      }));
+    }
+
+    var catalogListEl = panel.querySelector('.catalog-list');
+    if (catalogListEl) {
+      new Sortable(catalogListEl, Object.assign({}, sortableOpts, {
+        onEnd: function (evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          handleReorder('catalog', categoryId, catalogListEl, 'itemId');
+        }
+      }));
+    }
+  }
+
+  // kind: 'trip' | 'catalog'；datasetKey 是 <li> 上對應的 dataset 名稱（tripId / itemId）
+  function handleReorder(kind, categoryId, listEl, datasetKey) {
+    var isTrip = kind === 'trip';
+    var stateArr = isTrip ? state.tripList : state.catalog;
+    var idField = isTrip ? 'trip_id' : 'item_id';
+    var orderedIds = Array.prototype.map.call(listEl.children, function (li) { return li.dataset[datasetKey]; });
+
+    var previousOrder = stateArr.slice();
+    reorderStateArray(stateArr, idField, categoryId, orderedIds);
+    renderAll();
+
+    var apiCall = isTrip ? Api.reorderTripItems(categoryId, orderedIds) : Api.reorderCatalogItems(categoryId, orderedIds);
+    apiCall.catch(function () {
+      if (isTrip) state.tripList = previousOrder; else state.catalog = previousOrder;
+      renderAll();
+      showToast('排序更新失敗，已還原順序');
+    });
+  }
+
+  // 依 orderedIds 重排 arr 中屬於 categoryId 的項目，其餘分類的項目位置與相對順序不變
+  function reorderStateArray(arr, idField, categoryId, orderedIds) {
+    var byId = {};
+    arr.forEach(function (item) { byId[String(item[idField])] = item; });
+    var orderedItems = orderedIds.map(function (id) { return byId[String(id)]; }).filter(Boolean);
+    var cursor = 0;
+    for (var i = 0; i < arr.length; i++) {
+      if (String(arr[i].category_id) === String(categoryId)) {
+        arr[i] = orderedItems[cursor++];
+      }
+    }
   }
 
   // ---------- 事件綁定（每次重繪後對該容器綁一次，用委派） ----------

@@ -13,8 +13,8 @@ var SHEETS = {
 
 var SCHEMA = {
   Categories: ['id', 'name', 'type', 'visible', 'sort_order'],
-  Catalog: ['item_id', 'category_id', 'name', 'tag_id', 'created_at'],
-  TripList: ['trip_id', 'catalog_item_id', 'category_id', 'name', 'tag_id', 'checked', 'added_at'],
+  Catalog: ['item_id', 'category_id', 'name', 'tag_id', 'created_at', 'sort_order'],
+  TripList: ['trip_id', 'catalog_item_id', 'category_id', 'name', 'tag_id', 'checked', 'added_at', 'sort_order'],
   Tags: ['tag_id', 'name', 'color_key']
 };
 
@@ -112,6 +112,100 @@ function err_(message) {
   return { success: false, error: String(message) };
 }
 
+// 確保表格已有 sort_order 欄位；第一次呼叫時（欄位不存在）會補上欄位並依 category_id
+// 分組、依既有建立時間（Catalog: created_at / TripList: added_at，缺欄位則用列順序）
+// 補上初始排序值。已經有欄位的情況下只讀表頭一列，成本很低，可以每次請求都呼叫。
+function ensureSortOrderColumn_(sheetName) {
+  var sheet = getSheet_(sheetName);
+  var lastCol = sheet.getLastColumn();
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (headers.indexOf('sort_order') > -1) return;
+
+  var newCol = lastCol + 1;
+  sheet.getRange(1, newCol).setValue('sort_order');
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  var catCol = headers.indexOf('category_id');
+  var dateField = sheetName === SHEETS.CATALOG ? 'created_at' : 'added_at';
+  var dateCol = headers.indexOf(dateField);
+  var values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+  var order = values.map(function (row, i) { return i; });
+  order.sort(function (i, j) {
+    var catI = String(values[i][catCol]), catJ = String(values[j][catCol]);
+    if (catI !== catJ) return catI < catJ ? -1 : 1;
+    var dateI = dateCol > -1 ? values[i][dateCol] : i;
+    var dateJ = dateCol > -1 ? values[j][dateCol] : j;
+    if (dateI < dateJ) return -1;
+    if (dateI > dateJ) return 1;
+    return i - j;
+  });
+
+  var counters = {};
+  var sortOrders = new Array(values.length);
+  order.forEach(function (i) {
+    var cat = String(values[i][catCol]);
+    counters[cat] = (counters[cat] || 0) + 1;
+    sortOrders[i] = counters[cat];
+  });
+
+  sheet.getRange(2, newCol, lastRow - 1, 1).setValues(sortOrders.map(function (v) { return [v]; }));
+}
+
+// 分類內排序：依 category_id 分組、組內依 sort_order 遞增
+function sortByCategoryThenOrder_(rows) {
+  return rows.sort(function (a, b) {
+    var catA = String(a.category_id), catB = String(b.category_id);
+    if (catA !== catB) return catA < catB ? -1 : 1;
+    return (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0);
+  });
+}
+
+// 新增項目時的預設排序值：該分類目前最大值 + 1（加到分類清單最後面）
+function nextSortOrder_(sheetName, categoryId) {
+  var rows = sheetToObjects_(sheetName);
+  var maxOrder = rows.reduce(function (m, r) {
+    if (String(r.category_id) !== String(categoryId)) return m;
+    return Math.max(m, Number(r.sort_order) || 0);
+  }, 0);
+  return maxOrder + 1;
+}
+
+// 拖曳放開後重新排序：只改動 orderedIds 涵蓋、且屬於 categoryId 的列，單一批次寫入 sort_order 欄位
+function reorderItems_(sheetName, idField, categoryId, orderedIds) {
+  var sheet = getSheet_(sheetName);
+  var headers = SCHEMA[sheetName];
+  var idCol = headers.indexOf(idField);
+  var catCol = headers.indexOf('category_id');
+  var sortCol = headers.indexOf('sort_order');
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  var values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  var idToRowIndex = {};
+  values.forEach(function (row, r) { idToRowIndex[String(row[idCol])] = r; });
+
+  var touchedIndexes = orderedIds.map(function (id) {
+    var rowIndex = idToRowIndex[String(id)];
+    if (rowIndex === undefined) throw '找不到項目: ' + id;
+    if (String(values[rowIndex][catCol]) !== String(categoryId)) throw '項目不屬於此分類: ' + id;
+    return rowIndex;
+  });
+
+  touchedIndexes.forEach(function (rowIndex, i) { values[rowIndex][sortCol] = i + 1; });
+
+  var sortColValues = values.map(function (row) { return [row[sortCol]]; });
+  sheet.getRange(2, sortCol + 1, lastRow - 1, 1).setValues(sortColValues);
+
+  return touchedIndexes.map(function (rowIndex) {
+    var obj = {};
+    headers.forEach(function (h, c) { obj[h] = values[rowIndex][c]; });
+    return obj;
+  });
+}
+
 // ---------- 入口 ----------
 function doGet(e) {
   return handle_(e);
@@ -135,6 +229,8 @@ function handle_(e) {
   var action = params.action;
   var result;
   try {
+    ensureSortOrderColumn_(SHEETS.CATALOG);
+    ensureSortOrderColumn_(SHEETS.TRIPLIST);
     switch (action) {
       case 'getCategories': result = ok_(sheetToObjects_(SHEETS.CATEGORIES)); break;
       case 'addCategory': result = ok_(addCategory_(params)); break;
@@ -144,11 +240,13 @@ function handle_(e) {
       case 'addCatalogItem': result = ok_(addCatalogItem_(params)); break;
       case 'updateCatalogItem': result = ok_(updateCatalogItem_(params)); break;
       case 'deleteCatalogItem': result = ok_(deleteCatalogItem_(params)); break;
+      case 'reorderCatalogItems': result = ok_(reorderCatalogItems_(params)); break;
 
-      case 'getTripList': result = ok_(sheetToObjects_(SHEETS.TRIPLIST)); break;
+      case 'getTripList': result = ok_(getTripList_(params)); break;
       case 'addTripItem': result = ok_(addTripItem_(params)); break;
       case 'toggleCheck': result = ok_(toggleCheck_(params)); break;
       case 'deleteTripItem': result = ok_(deleteTripItem_(params)); break;
+      case 'reorderTripItems': result = ok_(reorderTripItems_(params)); break;
 
       case 'getTags': result = ok_(sheetToObjects_(SHEETS.TAGS)); break;
       case 'addTag': result = ok_(addTag_(params)); break;
@@ -197,7 +295,7 @@ function getCatalog_(p) {
   if (p.category_id) {
     rows = rows.filter(function (r) { return String(r.category_id) === String(p.category_id); });
   }
-  return rows;
+  return sortByCategoryThenOrder_(rows);
 }
 
 function addCatalogItem_(p) {
@@ -206,9 +304,14 @@ function addCatalogItem_(p) {
     category_id: p.category_id,
     name: p.name,
     tag_id: p.tag_id || '',
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    sort_order: nextSortOrder_(SHEETS.CATALOG, p.category_id)
   };
   return appendRow_(SHEETS.CATALOG, obj);
+}
+
+function reorderCatalogItems_(p) {
+  return reorderItems_(SHEETS.CATALOG, 'item_id', p.category_id, p.orderedItemIds || []);
 }
 
 function updateCatalogItem_(p) {
@@ -223,6 +326,14 @@ function deleteCatalogItem_(p) {
 }
 
 // ---------- TripList ----------
+function getTripList_(p) {
+  var rows = sheetToObjects_(SHEETS.TRIPLIST);
+  if (p && p.category_id) {
+    rows = rows.filter(function (r) { return String(r.category_id) === String(p.category_id); });
+  }
+  return sortByCategoryThenOrder_(rows);
+}
+
 function addTripItem_(p) {
   var name = p.name;
   var tagId = p.tag_id || '';
@@ -245,9 +356,14 @@ function addTripItem_(p) {
     name: name,
     tag_id: tagId,
     checked: false,
-    added_at: new Date().toISOString()
+    added_at: new Date().toISOString(),
+    sort_order: nextSortOrder_(SHEETS.TRIPLIST, categoryId)
   };
   return appendRow_(SHEETS.TRIPLIST, obj);
+}
+
+function reorderTripItems_(p) {
+  return reorderItems_(SHEETS.TRIPLIST, 'trip_id', p.category_id, p.orderedItemIds || []);
 }
 
 function toggleCheck_(p) {
