@@ -179,8 +179,10 @@
                 '<input type="checkbox" data-action="toggle-store-visible" data-category-id="' + s.id + '" ' + (isVisible ? 'checked' : '') + '>' +
                 '<span class="slider"></span>' +
               '</label>' +
-              '<button class="btn-icon" data-action="start-edit-category" data-category-id="' + s.id + '">✎</button>' +
-              '<button class="btn-icon" data-action="delete-category" data-category-id="' + s.id + '">✕</button>' +
+              '<span class="item-actions">' +
+                '<button class="btn-icon" data-action="start-edit-category" data-category-id="' + s.id + '">✎</button>' +
+                '<button class="btn-icon" data-action="delete-category" data-category-id="' + s.id + '">✕</button>' +
+              '</span>' +
             '</li>';
           }).join('') +
         '</ul>' +

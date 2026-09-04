@@ -1,5 +1,13 @@
 # 決策紀錄
 
+## 2026-09-05（四）圖示按鈕間距縮小 + 打勾框縮小
+
+- **`.btn-icon` padding `4px 6px → 4px 3px`、三處 `.item-actions` 的 `gap` `6px → 3px`**：直接照數值調整，四個區塊（本次清單、品項庫管理、賣場品項、賣場管理）共用同一套緊縮後的間距。
+- **補上遺漏的 `.store-manage-item .item-actions` 分組**：賣場管理的編輯／刪除圖示原本沒有包進 `.item-actions`，是唯一沒套用分組間距的地方，這次補上 `<span class="item-actions">` 包住兩顆圖示，跟本次清單／品項庫管理的結構一致。
+- **`.store-manage-header-spacer` 從 64px 調到 47px**：包進 `.item-actions` 分組、間距縮小後，圖示按鈕整組寬度變窄，直接用 Playwright 量測「編輯+刪除」分組的實際渲染寬度（47px）當作 spacer 寬度——「切換顯示」標籤所在的表頭列跟賣場項目列是兩個獨立渲染的 flex row，只有在 spacer 寬度等於下方項目列「開關到最右側的距離」時，兩者的欄位分界才會對齊。已用 Playwright 座標驗證：調整後 `labelRight` 跟 `switchRight` 完全相等（307 = 307）。
+- **`.trip-item .chk` 從 22×22px 改成 18×18px**：本次清單跟賣場品項共用同一個 `renderTripItemRow` 函式與同一份 CSS 規則，這個調整自動套用到兩處，不需要額外處理。
+- **已用 Playwright 驗證**：四處圖示間距一致（`gap: 3px`）、打勾框變小（18×18px）、賣場管理標籤與開關對齊、checkbox 打勾/取消勾功能正常、賣場管理編輯表單仍可正常開啟、`Sortable.get()` 仍回傳有效實例。純視覺/間距調整，不涉及 GAS。
+
 ## 2026-09-05（三）本次清單視覺統一為品項庫風格 + 編輯表單手機版換行優化
 
 - **`.trip-item` 拿掉圓角/列間距/預設灰底的卡片感，改用跟 `.catalog-item` 一致的細分隔線清單**：`border-radius`／`margin-bottom`／預設 `background: var(--tag-gray-tint)` 都拿掉，改成 `border-bottom: 1px solid var(--border)`（`:last-child` 拿掉分隔線），字級從 0.98rem 降到 0.92rem 對齊 `.catalog-item`。標籤底色（`.tag-red` 等 class）完全沒動，因為這套規則本來就跟 `.catalog-item` 共用，換了「卡片 vs 分隔線」骨架後底色機制照樣正常運作——已用 Playwright 截圖＋computed style 比對確認：無標籤的 `.trip-item` 背景是透明、跟 `.catalog-item` 的 border-bottom／padding／字級數值完全一致；有標籤的 `.trip-item` 底色 tint 依然正確顯示。
