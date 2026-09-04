@@ -95,15 +95,12 @@ body {
   border-radius: var(--radius-sm);
 }
 
-/* 實心按鈕：形狀（小圓角矩形）與飽和度都刻意跟淺色膠囊標籤區隔開，通用於任何清單列 */
-.btn-solid-primary, .btn-solid-neutral, .btn-solid-danger {
+/* 共用灰色圖示按鈕：加入/編輯/刪除三種情境（品項庫管理、本次清單、賣場管理）統一用這份規則 */
+.btn-icon {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.1rem; padding: 4px 6px; line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
-  border: none; border-radius: var(--radius-btn); min-height: 32px;
-  padding: 6px 14px; font-size: 0.85rem; font-weight: 600; color: #fff;
 }
-.btn-solid-primary { background: var(--primary); }
-.btn-solid-neutral { background: var(--neutral-deep); }
-.btn-solid-danger  { background: var(--danger-deep); }
 
 .trip-list, .catalog-list, .tag-manage-list, .store-manage-list { list-style: none; margin: 0; padding: 0; }
 
@@ -119,7 +116,6 @@ body {
 .trip-item .name { flex: 1; font-size: 0.98rem; word-break: break-word; }
 .trip-item.is-checked .name { color: var(--text-muted); text-decoration: line-through; }
 .tag-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.trip-item .btn-del { background: none; border: none; color: var(--text-muted); font-size: 1.1rem; padding: 4px 6px; }
 
 .tag-badge {
   font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
@@ -193,18 +189,11 @@ details.collapsible .catalog-list { margin-top: 8px; }
   padding: 4px 4px 0; font-size: 0.78rem; color: var(--text-muted);
 }
 .store-manage-header .name-wrap { flex: 1; }
-.store-manage-header-spacer { width: 56px; flex-shrink: 0; }
+.store-manage-header-spacer { width: 64px; flex-shrink: 0; }
 
 .catalog-item .item-actions {
   display: flex; gap: 6px; flex-shrink: 0; flex-wrap: nowrap;
   margin-left: auto;
-}
-.catalog-item .btn-solid-primary,
-.catalog-item .btn-solid-neutral,
-.catalog-item .btn-solid-danger {
-  padding: 5px 10px;
-  font-size: 0.75rem;
-  min-height: 28px;
 }
 
 .inline-form { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }

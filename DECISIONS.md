@@ -1,5 +1,16 @@
 # 決策紀錄
 
+## 2026-09-05 管理按鈕圖示化統一 + 本次清單／賣場管理新增編輯功能
+
+- **新增共用 `.btn-icon` class，直接取代 `.btn-solid-primary`／`.btn-solid-neutral`／`.btn-solid-danger` 三個 class**：這三個 class 換掉之後在全站已經沒有任何呼叫者（`.catalog-item` 三顆按鈕、`.store-manage-item` 刪除按鈕、`.trip-item` 刪除按鈕都改用 `.btn-icon`），連同 `.catalog-item .item-actions` 底下針對這三個 class 的 padding/font-size 覆寫規則、`.trip-item .btn-del` 規則（合併進 `.btn-icon`，`.trip-item` 的刪除按鈕 markup 直接改用 `.btn-icon`）一併刪除，沒有留下死代碼。
+- **三種圖示統一語意**：加入／加入品項庫都用 `＋`，編輯用 `✎`，刪除沿用既有的 `✕`，四個區塊（本次清單、品項庫管理、賣場品項、賣場管理）共用同一份 `.btn-icon` 樣式（灰色、無背景、無邊框），視覺風格一致。
+- **本次清單新增 `state.editingTripItemId`，賣場管理新增 `state.editingCategoryId`**：UI 模式直接比照既有 `editingCatalogItemId` 那一套（原地表單取代整列），本次清單編輯表單是「名稱輸入框＋標籤下拉＋儲存/取消」，賣場管理編輯表單少了標籤下拉（賣場沒有標籤概念），這是唯一的差異，符合需求文件的驗收標準。
+- **`showPromote` 判斷邏輯完全沒動**：賣場的 `trip-item` 因為 `showPromote` 本來就只在日常採購成立，重用同一個 `renderTripItemRow`／`onSectionClick`／`onSectionSubmit` 之後，賣場品項自動只會顯示編輯跟刪除兩顆圖示、沒有加號，不需要額外判斷或程式碼改動——已用 Playwright 截圖確認。
+- **`updateCategory_` 後端不限制 `type`**：雖然目前 UI 只有賣場管理會開放編輯入口（日常採購分類沒有編輯按鈕），但後端沒有加 `type !== 'store'` 這條限制，跟需求文件的判斷一致（沒必要為了目前用不到的情境多加限制，之後如果要開放編輯日常分類名稱，後端不用再改）。
+- **`updateTripItem_`／`updateCategory_` 都直接用既有的 `updateRowByKey_`**，寫法比照 `updateCatalogItem_`，找不到對應列就丟例外，找到則只覆寫傳入的欄位（`updateTripItem_` 覆寫 `name`/`tag_id`，`updateCategory_` 只覆寫 `name`），沒有另外抽共用函式，因為三處呼叫的欄位組合都不一樣，硬抽象化reuse 意義不大。
+- **`.store-manage-header-spacer` 寬度從 56px（估算「刪除」文字按鈕寬度）調整為 64px**：改成兩顆 `.btn-icon`（編輯＋刪除）後用 Playwright 實測座標確認「切換顯示」標籤的右邊界跟開關的右邊界對齊在同一個 x 座標（都是 290px），沒有被新的圖示按鈕欄位擠壓到，64px 剛好夠放兩顆圖示按鈕＋間距不溢出。
+- **已用 Playwright 對正式部署的 GAS 後端驗證**（`updateTripItem`／`updateCategory` 這兩個新 action 部署前）：品項庫管理、本次清單、賣場品項的圖示按鈕都正確渲染且無 console error；本次清單與品項庫編輯表單觸發後，畫面先樂觀更新，因為後端還沒有對應 action 而快速失敗回滾、正確跳出「更新項目失敗，請重試」／「更新品項失敗，請重試」toast；賣場管理的編輯表單只有名稱輸入框、沒有標籤下拉，取消編輯能正確還原成原本的顯示列；賣場品項只有編輯跟刪除圖示、沒有加號；`Sortable.get()` 在賣場卡片容器與賣場本次清單上仍回傳有效實例，圖示按鈕本質上還是 `<button>`，`SORTABLE_OPTS.filter` 沒有需要調整。這批新增的測試品項/清單項目都已在測試過程中刪除清理乾淨，沒有留下垃圾資料。
+
 ## 2026-09-04（八）事件監聽器累積修正 + GAS 寫入動作防護
 
 - **`bindSectionEvents` 用 `root.dataset.eventsBound` 當旗標**：`#panel-daily`／`#panel-store` 這兩個容器節點本身從頭到尾不會被換掉（只有 `innerHTML` 整段重寫），`dataset` 掛在容器節點本身上不會因為子節點被整段替換而重置，用它記錄「這個容器綁過事件了嗎」剛好對應這個 DOM 結構特性，比另外開一個全域變數或 `WeakSet` 記錄「哪些節點綁過」更直接。
@@ -7,7 +18,11 @@
 - **GAS `handle_` 多吃一個 `method` 參數，只在 `GET` 呼叫非 `get` 開頭的 action 時擋下**：用正規表示式 `/^get/` 判斷「讀取類」，理由是專案裡所有讀取 action 命名慣例本來就是 `get` 開頭（`getCategories`／`getCatalog`／`getTripList`／`getTags`），寫入/刪除/排序類 action 沒有一個是這個開頭，靠命名慣例做判斷不用另外維護一份 action 白名單/黑名單清單，之後新增 action 只要维持這個命名慣例就會自動被正確分類，不用回頭改這條檢查邏輯。檢查放在 `try` 區塊、`ensureSortOrderColumn_` 呼叫之前，被擋下的請求不會執行任何資料庫遷移或寫入動作。
 - **已用 Playwright 驗證前端修正**：反覆點擊同一個 checkbox 8 次（觸發 8 次 `renderAll` → 8 次原本會疊加的 `bindSectionEvents` 呼叫）後，監聽網路請求確認單擊一次品項庫「加入」按鈕只送出 1 次 `addTripItem` 請求（如果沒修正，應該會是 9 次），測試新增的資料已刪除還原。GAS 那段因為涉及部署後才會生效的行為（用瀏覽器網址列直接打 GET 觸發寫入），這次沒有實際部署去測試，純靠程式碼比對需求文件逐字覆核確認邏輯正確。
 
-## GAS 後端需要重新部署
+## GAS 後端需要重新部署（2026-09-05 這批）
+
+`gas/Code.gs` 這次新增了 `updateTripItem`、`updateCategory` 兩個 action。**這一步一定要回瀏覽器操作**：Apps Script 編輯器貼上新版 `gas/Code.gs` 全部內容 → Deploy > Manage deployments，對現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）按編輯（鉛筆圖示）→ New version → Deploy，**不要建立新的部署**。部署完成前，本次清單／賣場管理的「編輯」圖示點下去會先讓畫面樂觀更新，然後因為後端還沒有這兩個新 action 而失敗回滾、跳「更新項目失敗」／「更新賣場名稱失敗」的 toast（這是本批已經用 Playwright 驗證過的既有行為，不是 bug）。
+
+## GAS 後端需要重新部署（2026-09-04（八）這批）
 
 `gas/Code.gs` 這次修改了 `doGet`／`doPost`／`handle_` 的呼叫方式，新增「GET 呼叫非讀取類 action 會被擋下」的檢查。**這一步要回瀏覽器操作**：Apps Script 編輯器貼上新版 `gas/Code.gs` 全部內容 → Deploy > Manage deployments，對現有部署（ID 開頭 `AKfycbyB2Og9aZEl33HMxMXWj8qgFLeRqdISCvt4_F5vM61kBZgTBAu8oLMNc8pmfWOVZ9A8Qw`）按編輯（鉛筆圖示）→ New version → Deploy，**不要建立新的部署**。部署完成後，可以手動用瀏覽器網址列打開 `GAS網址?action=getCategories` 確認還能正常回應（讀取類不受影響），以及打開 `GAS網址?action=deleteCategory&category_id=test` 之類的網址，確認會收到「此操作僅允許透過 POST 呼叫」的錯誤訊息、不會真的執行任何動作。
 

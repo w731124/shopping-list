@@ -24,6 +24,7 @@
       return callGas('reorderCategories', { orderedCategoryIds: orderedCategoryIds });
     },
     deleteCategory: function (categoryId) { return callGas('deleteCategory', { category_id: categoryId }); },
+    updateCategory: function (id, name) { return callGas('updateCategory', { id: id, name: name }); },
 
     getCatalog: function (categoryId) { return callGas('getCatalog', { category_id: categoryId }); },
     addCatalogItem: function (categoryId, name, tagId) {
@@ -41,6 +42,7 @@
     addTripItem: function (params) { return callGas('addTripItem', params); },
     toggleCheck: function (tripId) { return callGas('toggleCheck', { trip_id: tripId }); },
     deleteTripItem: function (tripId) { return callGas('deleteTripItem', { trip_id: tripId }); },
+    updateTripItem: function (tripId, name, tagId) { return callGas('updateTripItem', { trip_id: tripId, name: name, tag_id: tagId }); },
     reorderTripItems: function (categoryId, orderedItemIds) {
       return callGas('reorderTripItems', { category_id: categoryId, orderedItemIds: orderedItemIds });
     },

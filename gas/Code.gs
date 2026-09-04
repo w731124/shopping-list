@@ -260,6 +260,7 @@ function handle_(e, method) {
       case 'toggleCategoryVisible': result = ok_(toggleCategoryVisible_(params)); break;
       case 'reorderCategories': result = ok_(reorderCategories_(params)); break;
       case 'deleteCategory': result = ok_(deleteCategory_(params)); break;
+      case 'updateCategory': result = ok_(updateCategory_(params)); break;
 
       case 'getCatalog': result = ok_(getCatalog_(params)); break;
       case 'addCatalogItem': result = ok_(addCatalogItem_(params)); break;
@@ -272,6 +273,7 @@ function handle_(e, method) {
       case 'toggleCheck': result = ok_(toggleCheck_(params)); break;
       case 'deleteTripItem': result = ok_(deleteTripItem_(params)); break;
       case 'reorderTripItems': result = ok_(reorderTripItems_(params)); break;
+      case 'updateTripItem': result = ok_(updateTripItem_(params)); break;
 
       case 'getTags': result = ok_(sheetToObjects_(SHEETS.TAGS)); break;
       case 'addTag': result = ok_(addTag_(params)); break;
@@ -346,6 +348,13 @@ function reorderCategories_(p) {
     headers.forEach(function (h, c) { obj[h] = values[rowIndex][c]; });
     return obj;
   });
+}
+
+// 改賣場（或任一分類）名稱，不限制 type——目前 UI 只開放賣場入口，但後端沒必要多加限制
+function updateCategory_(p) {
+  var updated = updateRowByKey_(SHEETS.CATEGORIES, 'id', p.id, { name: p.name });
+  if (!updated) throw '找不到分類: ' + p.id;
+  return { id: p.id, name: p.name };
 }
 
 // 刪除賣場：只能刪 type === 'store'，連動刪除底下的 TripList 與 Catalog 殘留資料
@@ -445,6 +454,12 @@ function toggleCheck_(p) {
   var next = !target.checked;
   updateRowByKey_(SHEETS.TRIPLIST, 'trip_id', p.trip_id, { checked: next });
   return { trip_id: p.trip_id, checked: next };
+}
+
+function updateTripItem_(p) {
+  var updated = updateRowByKey_(SHEETS.TRIPLIST, 'trip_id', p.trip_id, { name: p.name, tag_id: p.tag_id || '' });
+  if (!updated) throw '找不到清單項目: ' + p.trip_id;
+  return { trip_id: p.trip_id, name: p.name, tag_id: p.tag_id || '' };
 }
 
 function deleteTripItem_(p) {

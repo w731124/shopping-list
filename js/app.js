@@ -24,6 +24,8 @@
     activeTab: 'daily',
     editingTagId: null,
     editingCatalogItemId: null,
+    editingTripItemId: null,
+    editingCategoryId: null,
     storeManageOpen: false
   };
 
@@ -159,6 +161,15 @@
         '</div>' +
         '<ul class="store-manage-list">' +
           stores.map(function (s) {
+            if (state.editingCategoryId === s.id) {
+              return '<li class="store-manage-item">' +
+                '<form class="inline-form" data-action="edit-category-form" data-category-id="' + s.id + '">' +
+                  '<input type="text" name="name" value="' + escapeHtml(s.name) + '" required>' +
+                  '<button class="btn-add" type="submit">儲存</button>' +
+                  '<button class="btn-ghost" type="button" data-action="cancel-edit-category">取消</button>' +
+                '</form>' +
+              '</li>';
+            }
             var isVisible = s.visible === true || s.visible === 'TRUE';
             return '<li class="store-manage-item">' +
               '<span class="name-wrap">' + escapeHtml(s.name) + '</span>' +
@@ -166,7 +177,8 @@
                 '<input type="checkbox" data-action="toggle-store-visible" data-category-id="' + s.id + '" ' + (isVisible ? 'checked' : '') + '>' +
                 '<span class="slider"></span>' +
               '</label>' +
-              '<button class="btn-solid-danger" data-action="delete-category" data-category-id="' + s.id + '">刪除</button>' +
+              '<button class="btn-icon" data-action="start-edit-category" data-category-id="' + s.id + '">✎</button>' +
+              '<button class="btn-icon" data-action="delete-category" data-category-id="' + s.id + '">✕</button>' +
             '</li>';
           }).join('') +
         '</ul>' +
@@ -202,6 +214,16 @@
   }
 
   function renderTripItemRow(item) {
+    if (state.editingTripItemId === item.trip_id) {
+      return '<li class="trip-item" data-trip-id="' + item.trip_id + '">' +
+        '<form class="inline-form" data-action="edit-trip-form" data-trip-id="' + item.trip_id + '">' +
+          '<input type="text" name="name" value="' + escapeHtml(item.name) + '" required>' +
+          renderTagSelect(item.tag_id) +
+          '<button class="btn-add" type="submit">儲存</button>' +
+          '<button class="btn-ghost" type="button" data-action="cancel-edit-trip">取消</button>' +
+        '</form>' +
+      '</li>';
+    }
     var tag = tagById(item.tag_id);
     var tagClass = tag ? 'tag-' + tag.color_key : '';
     var dotClass = tag ? 'dot-' + tag.color_key : '';
@@ -213,8 +235,9 @@
       (tag ? '<span class="tag-dot ' + dotClass + '"></span>' : '') +
       '<span class="name">' + escapeHtml(item.name) + '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
-      (showPromote ? '<button class="btn-solid-primary" data-action="promote-to-catalog" data-trip-id="' + item.trip_id + '">加入品項庫</button>' : '') +
-      '<button class="btn-del" data-action="delete-trip" data-trip-id="' + item.trip_id + '">✕</button>' +
+      (showPromote ? '<button class="btn-icon" data-action="promote-to-catalog" data-trip-id="' + item.trip_id + '">＋</button>' : '') +
+      '<button class="btn-icon" data-action="start-edit-trip" data-trip-id="' + item.trip_id + '">✎</button>' +
+      '<button class="btn-icon" data-action="delete-trip" data-trip-id="' + item.trip_id + '">✕</button>' +
     '</li>';
   }
 
@@ -243,9 +266,9 @@
       '</span>' +
       (tag ? '<span class="tag-badge badge-' + tag.color_key + '">' + escapeHtml(tag.name) + '</span>' : '') +
       '<span class="item-actions">' +
-        '<button class="btn-solid-primary" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">加入</button>' +
-        '<button class="btn-solid-neutral" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">編輯</button>' +
-        '<button class="btn-solid-danger" data-action="delete-catalog" data-item-id="' + c.item_id + '">刪除</button>' +
+        '<button class="btn-icon" data-action="add-trip-from-catalog-inline" data-item-id="' + c.item_id + '" data-category-id="' + c.category_id + '">＋</button>' +
+        '<button class="btn-icon" data-action="start-edit-catalog" data-item-id="' + c.item_id + '">✎</button>' +
+        '<button class="btn-icon" data-action="delete-catalog" data-item-id="' + c.item_id + '">✕</button>' +
       '</span>' +
     '</li>';
   }
@@ -383,6 +406,18 @@
       renderAll();
     } else if ((t = e.target.closest('[data-action="delete-category"]'))) {
       deleteCategory(t.dataset.categoryId);
+    } else if ((t = e.target.closest('[data-action="start-edit-trip"]'))) {
+      state.editingTripItemId = t.dataset.tripId;
+      renderAll();
+    } else if ((t = e.target.closest('[data-action="cancel-edit-trip"]'))) {
+      state.editingTripItemId = null;
+      renderAll();
+    } else if ((t = e.target.closest('[data-action="start-edit-category"]'))) {
+      state.editingCategoryId = t.dataset.categoryId;
+      renderAll();
+    } else if ((t = e.target.closest('[data-action="cancel-edit-category"]'))) {
+      state.editingCategoryId = null;
+      renderAll();
     }
   }
 
@@ -416,6 +451,17 @@
       if (!storeName) return;
       addCategory(storeName, 'store');
       t.reset();
+    } else if ((t = e.target.closest('[data-action="edit-trip-form"]'))) {
+      e.preventDefault();
+      var editTripName = t.elements.name.value.trim();
+      var editTripTagId = t.elements.tag_id.value;
+      if (!editTripName) return;
+      updateTripItem(t.dataset.tripId, editTripName, editTripTagId);
+    } else if ((t = e.target.closest('[data-action="edit-category-form"]'))) {
+      e.preventDefault();
+      var editCategoryName = t.elements.name.value.trim();
+      if (!editCategoryName) return;
+      updateCategory(t.dataset.categoryId, editCategoryName);
     }
   }
 
@@ -503,6 +549,24 @@
       state.tripList.splice(idx, 0, item);
       renderAll();
       showToast('刪除失敗，請重試');
+    });
+  }
+
+  function updateTripItem(tripId, name, tagId) {
+    var item = state.tripList.filter(function (i) { return String(i.trip_id) === String(tripId); })[0];
+    if (!item) return;
+    var prevName = item.name;
+    var prevTagId = item.tag_id;
+    item.name = name;
+    item.tag_id = tagId;
+    state.editingTripItemId = null;
+    renderAll();
+
+    Api.updateTripItem(tripId, name, tagId).catch(function () {
+      item.name = prevName;
+      item.tag_id = prevTagId;
+      renderAll();
+      showToast('更新項目失敗，請重試');
     });
   }
 
@@ -618,6 +682,21 @@
       cat.visible = was;
       renderAll();
       showToast('更新賣場顯示狀態失敗');
+    });
+  }
+
+  function updateCategory(categoryId, name) {
+    var cat = categoryById(categoryId);
+    if (!cat) return;
+    var prevName = cat.name;
+    cat.name = name;
+    state.editingCategoryId = null;
+    renderAll();
+
+    Api.updateCategory(categoryId, name).catch(function () {
+      cat.name = prevName;
+      renderAll();
+      showToast('更新賣場名稱失敗，請重試');
     });
   }
 
