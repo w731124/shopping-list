@@ -1,5 +1,12 @@
 # 決策紀錄
 
+## 2026-09-04（四）標籤色點顯示修正 + 大賣場本次清單拖曳排序
+
+- **色點消失的根因是雙重的**：`.trip-item .tag-dot` 把尺寸規則限定在情境裡，品項庫管理清單／標籤設定 Modal 都套不到；且 `<span>` 預設 `display: inline`，非替換元素在 `inline` 狀態下瀏覽器本來就會忽略 `width`/`height`。改成不限定情境的通用規則 `.tag-dot { display: inline-block; width: 9px; height: 9px; ... }`，兩個成因一次解決，三個使用色點的地方（本次清單、品項庫管理、標籤設定 Modal）都正常顯示。
+- **賣場本次清單拖曳排序，重用既有的 `handleReorder`／`reorderTripItems` 邏輯，完全沒改後端**：`reorderTripItems_` 本來就是用傳入的 `category_id` 當範圍界線，賣場的 `category_id` 直接可以套用，不需要額外判斷分類 type。把 `initDailySortable` 裡「初始化 trip-list Sortable」那段抽成獨立函式 `initTripListSortable(tripListEl, categoryId)`，共用一份提到模組層級的 `SORTABLE_OPTS` 設定物件；`renderStorePanel` 在 `panel.innerHTML` 設定完成後，對每個可見賣場各自呼叫一次 `initTripListSortable`。品項庫管理（`catalog-list`）維持只在 `initDailySortable` 裡初始化，因為賣場本來就沒有品項庫管理清單。
+- **`.store-block` 補上 `data-sortable="true"`**：CSS 的 `-webkit-touch-callout: none` / `user-select: none` 規則是靠這個屬性選擇器套用，日常採購的 `.section` 本來就有標，賣場沒補的話拖曳時會有 iOS 長按跳系統選單、意外選字的風險，這次一併補齊。
+- **已用 Playwright 對正式部署驗證**：品項庫管理清單、標籤設定 Modal 的色點都正確顯示 9×9px 圓點且顏色正確（截圖確認）；日常採購本次清單／品項庫管理拖曳回歸測試正常（`Sortable.get()` 仍回傳實例）；賣場（以 Costco 為例）的本次清單長按拖曳，放開後**這次 API 呼叫直接成功、沒有跳出失敗 toast**（代表先前「拖曳排序」那批的 GAS 已經重新部署生效），重新整理頁面確認順序有真正寫回 Google Sheet；測試完把 Costco 的順序拖曳還原成原本的樣子。這批純前端異動，不涉及 GAS，push 後 GitHub Pages 更新即可生效。
+
 ## 2026-09-04（三）品項庫按鈕換行邏輯修正（追加）
 
 - **根因是 `.catalog-item .name-wrap { min-width: 0; }`**：`min-width: 0` 讓品名欄位可以被壓縮到無限窄，瀏覽器排版時會優先選「把品名壓成逐字瀑布」而不是「觸發整排換行」，導致上一版 `.item-actions` 不換行單位的修正實際上沒有被觸發。改成 `min-width: 7em`（約 6-7 個中文字寬）幫品名欄位設一個壓縮下限，壓到底之後瀏覽器沒有更多空間可擠，才會改走「標籤＋按鈕群組整排換到下一行」這條路。`7em` 是經驗值，照需求文件說明保留未來可能還要微調的空間。

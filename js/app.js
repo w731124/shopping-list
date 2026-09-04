@@ -137,7 +137,7 @@
       var items = state.tripList.filter(function (t) { return String(t.category_id) === String(store.id); });
       var accentColor = STORE_ACCENT_COLORS[store.name] || 'var(--border)';
       html +=
-        '<div class="section store-block" data-category-id="' + store.id + '" style="border-left: 5px solid ' + accentColor + ';">' +
+        '<div class="section store-block" data-category-id="' + store.id + '" data-sortable="true" style="border-left: 5px solid ' + accentColor + ';">' +
           '<div class="section-header">' +
             '<h2 class="section-title">' + escapeHtml(store.name) + '</h2>' +
             '<button class="btn-add" data-action="open-add-trip" data-category-id="' + store.id + '">+ 加入項目</button>' +
@@ -169,6 +169,10 @@
 
     panel.innerHTML = html;
     bindSectionEvents(panel);
+    visibleStores.forEach(function (store) {
+      var section = panel.querySelector('.store-block[data-category-id="' + store.id + '"]');
+      if (section) initTripListSortable(section.querySelector('.trip-list'), store.id);
+    });
   }
 
   function renderTripList(items) {
@@ -232,30 +236,32 @@
     return '<select name="tag_id">' + opts + '</select>';
   }
 
-  // ---------- 拖曳排序（僅限日常採購分類，賣場不套用） ----------
-  function initDailySortable(panel, categoryId) {
-    var sortableOpts = {
-      animation: 150,
-      delay: 300,
-      delayOnTouchOnly: true,
-      touchStartThreshold: 5,
-      filter: 'input, select, button, a',
-      preventOnFilter: false
-    };
+  // ---------- 拖曳排序（本次清單日常/賣場皆支援，品項庫管理僅日常採購有） ----------
+  var SORTABLE_OPTS = {
+    animation: 150,
+    delay: 300,
+    delayOnTouchOnly: true,
+    touchStartThreshold: 5,
+    filter: 'input, select, button, a',
+    preventOnFilter: false
+  };
 
-    var tripListEl = panel.querySelector('.trip-list');
-    if (tripListEl) {
-      new Sortable(tripListEl, Object.assign({}, sortableOpts, {
-        onEnd: function (evt) {
-          if (evt.oldIndex === evt.newIndex) return;
-          handleReorder('trip', categoryId, tripListEl, 'tripId');
-        }
-      }));
-    }
+  function initTripListSortable(tripListEl, categoryId) {
+    if (!tripListEl) return;
+    new Sortable(tripListEl, Object.assign({}, SORTABLE_OPTS, {
+      onEnd: function (evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        handleReorder('trip', categoryId, tripListEl, 'tripId');
+      }
+    }));
+  }
+
+  function initDailySortable(panel, categoryId) {
+    initTripListSortable(panel.querySelector('.trip-list'), categoryId);
 
     var catalogListEl = panel.querySelector('.catalog-list');
     if (catalogListEl) {
-      new Sortable(catalogListEl, Object.assign({}, sortableOpts, {
+      new Sortable(catalogListEl, Object.assign({}, SORTABLE_OPTS, {
         onEnd: function (evt) {
           if (evt.oldIndex === evt.newIndex) return;
           handleReorder('catalog', categoryId, catalogListEl, 'itemId');
